@@ -15,6 +15,8 @@
         .chatbot:hover { transform: scale(1.05); }
         .like-btn.liked { color: #ff4444; }
         .post-image { max-height: 400px; object-fit: cover; }
+        .fade-in { animation: fadeIn 2s ease-in; }
+        .fade-out { animation: fadeOut 2s ease-out; }
         .chatbot {
             position: fixed;
             bottom: 20px;
@@ -31,6 +33,13 @@
             right: 20px;
             animation: slideIn 0.3s ease-in-out;
         }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .section-delay-1 { animation-delay: 1s; }
+        .section-delay-2 { animation-delay: 2s; }
+        .section-delay-3 { animation-delay: 3s; }
         @keyframes slideIn {
             from { transform: translateX(100%); }
             to { transform: translateX(0); }
@@ -39,10 +48,12 @@
 </head>
 <body class="bg-gray-100">
     <!-- Navbar -->
-    <nav class="bg-white shadow-md fixed w-full z-10 top-0">
+    <nav class="bg-white shadow-md fixed w-full z-10 top-0 fade-in">
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center py-4">
-                <div class="text-2xl font-bold text-blue-600">MUJ Connect</div>
+                <a href="homepage.html" class="flex-shrink-0 flex items-center">
+                    <span class="text-2xl font-bold text-blue-600">MUJ Connect</span>
+                </a>
                 <div class="flex space-x-6">
                     <a href="#" class="nav-link active" onclick="showHome()">Home</a>
                     <a href="#" class="nav-link" onclick="showVRRouting()">VR Routing</a>
@@ -54,7 +65,7 @@
     </nav>
 
     <!-- Main Content -->
-    <div class="container mx-auto px-4 mt-20">
+    <div class="container mx-auto px-4 mt-20 fade-in">
         <!-- Home Section -->
         <div id="homeSection" class="space-y-6">
             <!-- Post Creation (Only visible when logged in) -->
@@ -113,7 +124,7 @@
         <button onclick="toggleChat()" class="bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 transition">
             <i class="bi bi-chat-dots text-2xl"></i>
         </button>
-        <div id="chatbox" class="hidden bg-white rounded-lg shadow-lg p-4 mb-16 w-72">
+        <div id="chatbox" class="hidden bg-white rounded-lg shadow-lg p-4 mb-16 w-72 fade-in">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-bold">Chat Assistant</h3>
                 <button onclick="toggleChat()" class="text-gray-500 hover:text-gray-700">×</button>
