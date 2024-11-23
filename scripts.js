@@ -154,15 +154,15 @@ function likePost(postId) {
 
     const post = posts.find(p => p.id === postId);
     if (post) {
-        const userIndex = post.likedBy.indexOf(currentUser );
-        if (userIndex === -1) {
+        const usermain = post.likedBy.mainOf(currentUser );
+        if (usermain === -1) {
             // User has not liked the post yet
             post.likes += 1;
             post.likedBy.push(currentUser );
         } else {
             // User has already liked the post, so remove the like
             post.likes -= 1;
-            post.likedBy.splice(userIndex, 1);
+            post.likedBy.splice(usermain, 1);
         }
         renderPosts();
     }
@@ -307,7 +307,7 @@ document.getElementById('signInForm').addEventListener('submit', function(e) {
         } else {
             alert('Login successful!');
             successLogin = 1;
-            window.location.href = `index.html?username=${encodeURIComponent(username)}`;
+            window.location.href = `main.html?username=${encodeURIComponent(username)}`;
         }
         document.getElementById('loginText').classList.remove('hidden');
         document.getElementById('loginSpinner').classList.add('hidden');
