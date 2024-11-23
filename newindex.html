@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUJ Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            opacity: 0;
+            animation: fadeIn 1s ease-in forwards;
+        }
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 1s ease-in forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .section-delay-1 { animation-delay: 1s; }
+        .section-delay-2 { animation-delay: 2s; }
+        .section-delay-3 { animation-delay: 3s; }
+        .liked { color: red !important; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-md fixed w-full z-10 top-0 fade-in">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="homepage.html" class="flex-shrink-0 flex items-center">
+                        <span class="text-2xl font-bold text-blue-600">MUJ Connect</span>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4" id="navButtons">
+                    <a href="index.html" class="hidden logged-out-content px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 transition">Login</a>
+                    <button onclick="window.location.href='profile.html'" class="hidden logged-in-content px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100 transition">Profile</button>
+                    <button onclick="logout()" class="hidden logged-in-content px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto pt-20 px-4 sm:px-6 lg:px-8">
+        <!-- Post Creation (Only visible when logged in) -->
+        <div class="hidden logged-in-content mb-8 fade-in section-delay-1">
+            <div class="bg-white rounded-lg shadow p-6">
+                <textarea id="postContent" class="w-full p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="What's on your mind?"></textarea>
+                <div class="mt-4 flex justify-end">
+                    <button onclick="createPost()" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">Post</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Posts Feed -->
+        <div id="posts" class="space-y-6 fade-in section-delay-2">
+            <!-- Example Posts -->
+        </div>
+    </main>
+
+    <!-- Chat Bot -->
+    <div class="fixed bottom-6 right-6 fade-in section-delay-3">
+        <div id="chatbot" class="hidden bg-white rounded-lg shadow-lg w-80">
+            <div class="p-4 border-b bg-blue-600 text-white rounded-t-lg flex justify-between items-center">
+                <span>Chat Assistant</span>
+                <button onclick="toggleChat()" class="text-white hover:text-gray-200">×</button>
+            </div>
+            <div class="p-4 h-80 overflow-y-auto" id="chatMessages">
+                <div class="mb-4">
+                    <div class="bg-gray-100 rounded-lg p-3 inline-block">
+                        Hello! How can I help you today?
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t">
+                <div class="flex space-x-2">
+                    <input type="text" id="chatInput" class="flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type a message...">
+                    <button onclick="sendMessage()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Send</button>
+                </div>
+            </div>
+        </div>
+        <button onclick="toggleChat()" class="bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition">
+            <i class="bi bi-chat-dots text-2xl"></i>
+        </button>
+    </div>
+
+    <script>
+        // Check login status and URL parameters
+        let isLoggedIn = true;
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check login status from URL
+            isLoggedIn = urlParams.get('login') === '1';
+            updateUIForLoginStatus();
+            populateExamplePosts();
+        });
+
+        function updateUIForLoginStatus() {
+            const loggedInElements = document.querySelectorAll('.logged-in-content');
+            const loggedOutElements = document.querySelectorAll('.logged-out-content');
+            
+            loggedInElements.forEach(el => el.style.display = isLoggedIn ? 'block' : 'none');
+            loggedOutElements.forEach(el => el.style.display = isLoggedIn ? 'none' : 'block');
+        }
+
+        function logout() {
+            window.location.href = 'index.html';
+        }
+
+        function toggleChat() {
+            const chatbot = document.getElementById('chatbot');
+            chatbot.classList.toggle('hidden');
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.innerHTML += `
+                <div class="mb-4 text-right">
+                    <div class="bg-blue-100 rounded-lg p-3 inline-block">
+                        ${message}
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <div class="bg-gray-100 rounded-lg p-3 inline-block">
+                        I'm a demo chatbot. I can't actually process messages yet!
+                    </div>
+                </div>
+            `;
+
+            input.value = '';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function toggleLike(button) {
+            if (!isLoggedIn) {
+                alert('Please log in to like posts');
+                return;
+            }
+            
+            if (!button.classList.contains('liked')) {
+                button.classList.add('liked');
+                const countSpan = button.querySelector('.like-count');
+                const currentCount = parseInt(countSpan.textContent);
+                countSpan.textContent = currentCount + 1;
+            } else {
+                button.classList.remove('liked');
+                const countSpan = button.querySelector('.like-count');
+                const currentCount = parseInt(countSpan.textContent);
+                countSpan.textContent = currentCount - 1;
+            }
+        }
+
+        function createPost() {
+            const content = document.getElementById('postContent').value.trim();
+            if (!content) return;
+
+            const posts = document.getElementById('posts');
+            const newPost = `
+                <div class="bg-white rounded-lg shadow p-6 fade-in">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-300"></div>
+                        <div>
+                            <div class="font-semibold">You</div>
+                            <div class="text-sm text-gray-500">Just now</div>
+                        </div>
+                    </div>
+                    <p class="text-gray-800 mb-4">${content}</p>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="toggleLike(this)" class="flex items-center space-x-2 text-gray-500 hover:text-gray-700">
+                            <i class="bi bi-heart"></i>
+                            <span class="like-count">0</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            posts.insertAdjacentHTML('afterbegin', newPost);
+            document.getElementById('postContent').value = '';
+        }
+
+        function populateExamplePosts() {
+            const posts = document.getElementById('posts');
+            const examplePosts = [
+                {
+                    name: "Alice Johnson",
+                    time: "2 hours ago",
+                    content: "Just finished my first project in Web Development! 🎉 #coding #webdev",
+                    likes: 15
+                },
+                {
+                    name: "Bob Smith",
+                    time: "4 hours ago",
+                    content: "Anyone interested in joining our study group for Advanced Algorithms? Meeting tomorrow at the library! 📚",
+                    likes: 23
+                }
+            ];
+
+            posts.innerHTML = examplePosts.map(post => `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-300"></div>
+                        <div>
+                            <div class="font-semibold">${post.name}</div>
+                            <div class="text-sm text-gray-500">${post.time}</div>
+                        </div>
+                    </div>
+                    <p class="text-gray-800 mb-4">${post.content}</p>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="toggleLike(this)" class="flex items-center space-x-2 text-gray-500 hover:text-gray-700">
+                            <i class="bi bi-heart"></i>
+                            <span class="like-count">${post.likes}</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
