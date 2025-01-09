@@ -3,32 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MUJ Connect - Homepage</title>
+    <title>MUJ Connect Homepage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.0.0-beta.4/tsparticles.bundle.min.js"></script>
     <style>
         body {
             font-family: 'Poppins', sans-serif;
             scroll-behavior: smooth;
-        }
-        
-        .fade-in {
-            opacity: 0;
-            transition: opacity 1s ease-in;
-        }
-        
-        .fade-in.visible {
-            opacity: 1;
+            cursor: url('images/cur2.png'), auto;
+            overflow-x: hidden;
+            scroll-snap-type: y mandatory; /* Enable scroll snapping */
         }
 
+        .cta-button {
+        cursor: url('images/cur1.png'), pointer;
+        }
+        
         .section {
-            min-height: 100vh;
+            min-height: 100vh; /* Ensure each section takes up the full viewport height */
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             padding: 2rem;
+            position: relative;
+            z-index: 1;
+            scroll-snap-align: start; /* Enable scroll snapping alignment */
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease; /* Add transition effect */
+        }
+
+        .glass:hover {
+            transform: scale(1.05); /* Add hover effect */
         }
 
         .chatbot {
@@ -41,32 +55,57 @@
         .chatbot:hover {
             transform: scale(1.1);
         }
+
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-900 text-white">
 
-    <section id="hero" class="section bg-blue-50">
-        <h1 class="text-6xl md:text-8xl font-bold text-blue-600 fade-in mb-4">MUJ Connect</h1>
-        <p class="text-xl text-gray-600 fade-in delay-500">Your Anonymous Social Space</p>
+    <!-- 3D Interactive Background -->
+    <div id="particles-js"></div>
+
+    <!-- Hero Section -->
+    <section id="hero" class="section active fade-in">
+        <h1 class="text-6xl md:text-8xl font-bold text-white mb-4">MUJ Connect</h1>
+        <p class="text-xl text-gray-300">Your Anonymous Social Space</p>
     </section>
 
-    <section id="about" class="section bg-white">
-        <div class="max-w-3xl mx-auto text-center fade-in">
-            <h2 class="text-4xl font-bold text-blue-600 mb-8">What is MUJ Connect?</h2>
-            <p class="text-lg text-gray-700 mb-6">
+    <!-- About Section -->
+    <section id="about" class="section fade-in">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-4xl font-bold text-white mb-8">What is MUJ Connect ?</h2>
+            <p class="text-lg text-gray-300 mb-6">
                 MUJ Connect is your safe space to express, share and connect with fellow students anonymously.
                 Share your thoughts, experiences, and moments without revealing your identity.
             </p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
-                <div class="p-6 bg-blue-50 rounded-lg">
+                <div class="p-6 glass fade-in">
                     <i class="bi bi-shield-check text-4xl text-blue-600"></i>
                     <h3 class="text-xl font-semibold mt-4">Anonymous Posting</h3>
                 </div>
-                <div class="p-6 bg-blue-50 rounded-lg">
+                <div class="p-6 glass fade-in">
                     <i class="bi bi-chat-dots text-4xl text-blue-600"></i>
                     <h3 class="text-xl font-semibold mt-4">Interactive Comments</h3>
                 </div>
-                <div class="p-6 bg-blue-50 rounded-lg">
+                <div class="p-6 glass fade-in">
                     <i class="bi bi-people text-4xl text-blue-600"></i>
                     <h3 class="text-xl font-semibold mt-4">Community Driven</h3>
                 </div>
@@ -74,46 +113,79 @@
         </div>
     </section>
 
-    <section id="developers" class="section bg-blue-50">
-        <div class="max-w-4xl mx-auto text-center fade-in">
-            <h2 class="text-4xl font-bold text-blue-600 mb-12">Meet the Developers</h2>
+    <!-- Developers Section -->
+    <section id="developers" class="section fade-in">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-4xl font-bold text-white mb-12">Meet the Developers</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div class="p-6 bg-white rounded-lg shadow-lg">
+                <div class="p-6 glass fade-in">
                     <div class="w-24 h-24 bg-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
                         <i class="bi bi-person-fill text-4xl text-white"></i>
                     </div>
                     <h3 class="text-xl font-semibold">Vishesh Varshney</h3>
-                    <p class="text-gray-600">Main Developer</p>
-                    <p class="mt-4 text-gray-700">Website Design and Implementation</p>
+                    <p class="text-gray-300">Main Developer</p>
+                    <p class="mt-4 text-gray-200">Website Design and Implementation</p>
                 </div>
-                <div class="p-6 bg-white rounded-lg shadow-lg">
+                <div class="p-6 glass fade-in">
                     <div class="w-24 h-24 bg-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
                         <i class="bi bi-person-fill text-4xl text-white"></i>
                     </div>
                     <h3 class="text-xl font-semibold">Harshit Raj</h3>
-                    <p class="text-gray-600">Co-Developer</p>
-                    <p class="mt-4 text-gray-700">Dataset Collection and AI Training</p>
+                    <p class="text-gray-300">Co-Developer</p>
+                    <p class="mt-4 text-gray-200">Dataset Collection and AI Training</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="cta" class="section bg-white">
-        <div class="text-center fade-in">
-            <h2 class="text-4xl font-bold text-blue-600 mb-8">Step into the world of MUJ Connect</h2>
-            <a href="main.html" class="inline-block px-8 py-4 bg-blue-600 text-white rounded-full text-lg font-semibold hover:bg-blue-700 transition-colors">
-                Enter MUJ Connect
+    <!-- Call to Action Section -->
+    <section id="cta" class="section fade-in">
+        <div class="text-center">
+            <h2 class="text-4xl font-bold text-white mb-8">Step into the world of MUJ Connect</h2>
+            <a href="login.html" 
+               class="cta-button inline-block px-12 py-4 bg-blue-600 text-white rounded-full text-lg font-semibold hover:bg-blue-700 transition-colors block w-full max-w-md mx-auto">
+                Log In
             </a>
+            <p class="text-lg text-gray-300 mt-4">
+                Don't have an account? 
+                <a href="login.html" class="text-blue-400 hover:underline">Sign In</a>
+            </p>
         </div>
     </section>
-
-    <div class="chatbot">
-        <button class="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors">
-            <i class="bi bi-chat-dots-fill text-2xl"></i>
-        </button>
-    </div>
-
+    
     <script>
+        // Initialize particles.js for red background
+        tsParticles.load("particles-js", {
+            particles: {
+                number: {
+                    value: 100,
+                    density: { enable: true, value_area: 800 }
+                },
+                color: { value: "#ffffff" },
+                shape: { type: "circle" },
+                opacity: { value: 0.5 },
+                size: { value: 3, random: true },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: "#ffffff",
+                    opacity: 0.4,
+                    width: 1
+                },
+                move: { enable: true, speed: 6 }
+            },
+            interactivity: {
+                events: {
+                    onhover: { enable: true, mode: "grab" },
+                    onclick: { enable: true, mode: "push" }
+                },
+            },
+            retina_detect: true,
+            background: {
+                color: { value: "#1e98d9" }, // Red background
+            }
+        });
+
         // Intersection Observer for fade effects
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -121,16 +193,35 @@
                     entry.target.classList.add('visible');
                 }
             });
-        }, {
-            threshold: 0.1
-        });
+        }, { threshold: 0.1 });
 
         document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
-        // Chatbot functionality
-        document.querySelector('.chatbot').addEventListener('click', () => {
-            alert('Chatbot is currently under development. Please check back later!');
+        // Add event listener to scroll to next section on scroll
+        document.addEventListener('wheel', (e) => {
+            if (e.deltaY > 0) {
+                // Scroll down
+                const nextSection = document.querySelector('.section.active + .section');
+                if (nextSection) {
+                    nextSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setTimeout(() => {
+                        document.querySelector('.section.active').classList.remove('active');
+                        nextSection.classList.add('active');
+                    }, 500);
+                }
+            } else {
+                // Scroll up
+                const prevSection = document.querySelector('.section.active').previousElementSibling;
+                if (prevSection && prevSection.classList.contains('section')) {
+                    prevSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setTimeout(() => {
+                        document.querySelector('.section.active').classList.remove('active');
+                        prevSection.classList.add('active');
+                    }, 500);
+                }
+            }
         });
+
     </script>
 </body>
 </html>
