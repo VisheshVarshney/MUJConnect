@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { LogIn, ArrowLeft } from 'lucide-react';
+import { LogIn, ArrowLeft, Chrome } from 'lucide-react';
 
 export default function Login() {
   const [identifier, setIdentifier] = useState('');
@@ -16,43 +16,78 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // First try to find the user by username
-      if (!identifier.includes('@')) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('username', identifier)
-          .single();
-
-        if (profileError) {
-          throw new Error('Invalid username or password');
-        }
-
-        if (profile?.email) {
-          // Try login with the found email
-          const { error } = await supabase.auth.signInWithPassword({
-            email: profile.email,
-            password,
-          });
-          
-          if (error) throw error;
-          navigate('/feed');
-          return;
-        }
-      }
-
-      // If identifier is an email or username lookup failed, try direct email login
-      const { error } = await supabase.auth.signInWithPassword({
+      // Try direct login first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: identifier,
         password,
       });
 
-      if (error) throw error;
+      // If login fails and the identifier doesn't look like an email,
+      // it might be a username
+      if (signInError && !identifier.includes('@')) {
+        // Look up the user by username
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', identifier);
+
+        if (!users || users.length === 0) {
+          throw new Error('Username not found');
+        }
+
+        // Get the user's auth details
+        const { data: authUser } = await supabase
+          .from('auth.users')
+          .select('email')
+          .eq('id', users[0].id)
+          .single();
+
+        if (!authUser?.email) {
+          throw new Error('No email found for this username');
+        }
+
+        // Try login with the found email
+        const { error: secondSignInError } = await supabase.auth.signInWithPassword({
+          email: authUser.email,
+          password,
+        });
+
+        if (secondSignInError) {
+          if (secondSignInError.message.includes('Invalid login credentials')) {
+            throw new Error('Incorrect password');
+          }
+          throw secondSignInError;
+        }
+      } else if (signInError) {
+        throw signInError;
+      }
+
       navigate('/feed');
     } catch (error: any) {
-      toast.error('Invalid login credentials');
+      console.error('Login error:', error);
+      toast.error(error.message || 'Login failed');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+          redirectTo: `${window.location.origin}/feed`
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      toast.error('Error signing in with Google');
     }
   };
 
@@ -65,24 +100,34 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      let emailToReset = identifier;
-      
-      // If identifier is a username, get the associated email
+      let email = identifier;
       if (!identifier.includes('@')) {
-        const { data: profile } = await supabase
+        // Look up the user by username
+        const { data: users } = await supabase
           .from('profiles')
-          .select('email')
-          .eq('username', identifier)
-          .single();
+          .select('id')
+          .eq('username', identifier);
 
-        if (!profile) {
+        if (!users || users.length === 0) {
           throw new Error('Username not found');
         }
-        emailToReset = profile.email;
+
+        // Get the user's auth details
+        const { data: authUser } = await supabase
+          .from('auth.users')
+          .select('email')
+          .eq('id', users[0].id)
+          .single();
+
+        if (!authUser?.email) {
+          throw new Error('No email found for this username');
+        }
+
+        email = authUser.email;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(emailToReset, {
-        redirectTo: window.location.origin + '/reset-password'
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
       });
       
       if (error) throw error;
@@ -90,7 +135,8 @@ export default function Login() {
       toast.success('Password reset instructions sent to your email');
       setShowForgotPassword(false);
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Password reset error:', error);
+      toast.error(error.message || 'Failed to send reset instructions');
     } finally {
       setIsLoading(false);
     }
@@ -199,6 +245,24 @@ export default function Login() {
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <Chrome className="w-5 h-5 mr-2" />
+            Sign in with Google
           </button>
         </form>
 

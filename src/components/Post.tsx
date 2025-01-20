@@ -10,6 +10,8 @@ import {
   Trash2,
   X,
   Send,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -34,12 +36,33 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [showAllComments, setShowAllComments] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
   useEffect(() => {
     if (post.comments) {
       setComments(post.comments);
     }
+    fetchMediaFiles();
   }, [post.comments]);
+
+  const fetchMediaFiles = async () => {
+    const { data } = await supabase
+      .from('media_files')
+      .select('*')
+      .eq('post_id', post.id)
+      .order('created_at', { ascending: true });
+    
+    if (data) {
+      const filesWithUrls = await Promise.all(data.map(async (file) => {
+        const { data: { publicUrl } } = supabase.storage
+          .from('post-media')
+          .getPublicUrl(file.file_path);
+        return { ...file, url: publicUrl };
+      }));
+      setMediaFiles(filesWithUrls);
+    }
+  };
 
   const handleLike = async () => {
     try {
@@ -69,11 +92,21 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
         throw new Error('Unauthorized');
       }
 
-      // First delete all likes
+      // Delete media files from storage
+      for (const file of mediaFiles) {
+        await supabase.storage
+          .from('post-media')
+          .remove([file.file_path]);
+      }
+
+      // Delete all likes
       await supabase.from('likes').delete().eq('post_id', post.id);
 
-      // Then delete all comments
+      // Delete all comments
       await supabase.from('comments').delete().eq('post_id', post.id);
+
+      // Delete media files records
+      await supabase.from('media_files').delete().eq('post_id', post.id);
 
       // Finally delete the post
       const { error } = await supabase.from('posts').delete().eq('id', post.id);
@@ -172,7 +205,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          {!post.is_anonymous ? (
+          {!post.is_anonymous || currentUser?.is_superadmin ? (
             <Link to={`/profile/${post.profiles.id}`}>
               <img
                 src={
@@ -190,12 +223,18 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
           )}
 
           <div>
-            <Link
-              to={`/profile/${post.profiles.id}`}
-              className="font-semibold text-gray-900 dark:text-white hover:underline"
-            >
-              {post.is_anonymous ? 'Anonymous' : post.profiles.full_name}
-            </Link>
+            {!post.is_anonymous || currentUser?.is_superadmin ? (
+              <Link
+                to={`/profile/${post.profiles.id}`}
+                className="font-semibold text-gray-900 dark:text-white hover:underline"
+              >
+                {post.is_anonymous ? 'Anonymous (View Profile)' : post.profiles.full_name}
+              </Link>
+            ) : (
+              <span className="font-semibold text-gray-900 dark:text-white">
+                Anonymous
+              </span>
+            )}
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {format(new Date(post.created_at), 'MMM d, yyyy')}
             </div>
@@ -266,12 +305,68 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
         <p className="mt-4 text-gray-700 dark:text-gray-200">{post.content}</p>
       )}
 
-      {post.image_url && (
-        <img
-          src={post.image_url}
-          alt="Post content"
-          className="mt-4 rounded-lg w-full object-cover"
-        />
+      {mediaFiles.length > 0 && (
+        <div className="mt-4 relative">
+          <div className="aspect-square rounded-lg overflow-hidden bg-black">
+            {mediaFiles[currentMediaIndex].file_type === 'image' ? (
+              <img
+                src={mediaFiles[currentMediaIndex].url}
+                alt=""
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <video
+                src={mediaFiles[currentMediaIndex].url}
+                className="w-full h-full object-contain"
+                controls
+              />
+            )}
+          </div>
+          
+          {mediaFiles.length > 1 && (
+            <>
+              <button
+                onClick={() => setCurrentMediaIndex(prev => Math.max(0, prev - 1))}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75"
+                disabled={currentMediaIndex === 0}
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => setCurrentMediaIndex(prev => Math.min(mediaFiles.length - 1, prev + 1))}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75"
+                disabled={currentMediaIndex === mediaFiles.length - 1}
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+              
+              <div className="mt-2 flex space-x-2 overflow-x-auto">
+                {mediaFiles.map((file, index) => (
+                  <button
+                    key={file.id}
+                    onClick={() => setCurrentMediaIndex(index)}
+                    className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden ${
+                      index === currentMediaIndex ? 'ring-2 ring-blue-500' : ''
+                    }`}
+                  >
+                    {file.file_type === 'image' ? (
+                      <img
+                        src={file.url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <video
+                        src={file.url}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       <div className="mt-4 flex items-center space-x-6 text-gray-600 dark:text-gray-400">
@@ -304,7 +399,6 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
         </button>
       </div>
 
-      {/* Add Comment Input */}
       <div className="mt-4">
         <div className="flex space-x-2">
           <input
@@ -324,7 +418,6 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
         </div>
       </div>
 
-      {/* Preview Comments (up to 3) */}
       {comments.length > 0 && (
         <div className="mt-4 space-y-4">
           {displayedComments.map((comment) => (

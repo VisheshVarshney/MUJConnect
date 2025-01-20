@@ -28,7 +28,7 @@ export default function Profile() {
 
   useEffect(() => {
     loadProfile();
-  }, [id, navigate]);
+  }, [id]);
 
   const loadProfile = async () => {
     try {
@@ -71,12 +71,18 @@ export default function Profile() {
         });
         
         // Fetch posts
-        const { data: postsData } = await supabase
+        let query = supabase
           .from('posts')
           .select('*, profiles(*), likes(*), comments(*)')
           .eq('user_id', profileId)
           .order('created_at', { ascending: false });
 
+        // If not superadmin and viewing someone else's profile, exclude anonymous posts
+        if (!currentUserProfile?.is_superadmin && profileId !== user.id) {
+          query = query.eq('is_anonymous', false);
+        }
+
+        const { data: postsData } = await query;
         if (postsData) setPosts(postsData);
       }
     } catch (error) {
@@ -349,7 +355,7 @@ export default function Profile() {
                     <div className="text-gray-600 dark:text-gray-400">Followers</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-bold text-gray-900 dark:text-white">0 </div>
+                    <div className="font-bold text-gray-900 dark:text-white">0</div>
                     <div className="text-gray-600 dark:text-gray-400">Following</div>
                   </div>
                 </div>

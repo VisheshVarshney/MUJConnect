@@ -1,24 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Image, Send } from 'lucide-react';
+import { Image, Send, X, Video, Shield, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { useDropzone } from 'react-dropzone';
+import Cropper from 'react-easy-crop';
+
+interface Point { x: number; y: number }
+interface Area { x: number; y: number; width: number; height: number }
 
 export default function CreatePost() {
   const [content, setContent] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [showCropper, setShowCropper] = useState(false);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreas, setCroppedAreas] = useState<Area[]>([]);
+  const [showOptions, setShowOptions] = useState(false);
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const validFiles = acceptedFiles.filter(file => 
+      file.type.startsWith('image/') || file.type.startsWith('video/')
+    ).slice(0, 10);
+
+    if (validFiles.length > 0) {
+      setMediaFiles(prev => [...prev, ...validFiles]);
+      const newPreviewUrls = validFiles.map(file => URL.createObjectURL(file));
+      setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+      
+      if (validFiles[0].type.startsWith('image/')) {
+        setCurrentFileIndex(mediaFiles.length);
+        setShowCropper(true);
+      }
+    }
+  }, [mediaFiles.length]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': [],
+      'video/*': []
+    },
+    maxSize: 10485760,
+  });
+
+  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+    const newCroppedAreas = [...croppedAreas];
+    newCroppedAreas[currentFileIndex] = croppedAreaPixels;
+    setCroppedAreas(newCroppedAreas);
+  }, [croppedAreas, currentFileIndex]);
+
+  const removeFile = (index: number) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+    setCroppedAreas(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() && mediaFiles.length === 0) return;
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Ensure user has a profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -26,29 +79,58 @@ export default function CreatePost() {
         .maybeSingle();
 
       if (!profile) {
-        // Create profile if it doesn't exist
         await supabase
           .from('profiles')
           .insert({
             id: user.id,
-            username: user.email?.split('@')[0], // Temporary username
-            full_name: 'User' // Temporary name
+            username: user.email?.split('@')[0],
+            full_name: 'User'
           });
       }
 
-      const { error } = await supabase.from('posts').insert({
-        content,
-        user_id: user.id,
-        is_anonymous: isAnonymous,
-      });
+      const { data: post, error: postError } = await supabase
+        .from('posts')
+        .insert({
+          content,
+          user_id: user.id,
+          is_anonymous: isAnonymous,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (postError) throw postError;
+
+      if (mediaFiles.length > 0) {
+        for (let i = 0; i < mediaFiles.length; i++) {
+          const file = mediaFiles[i];
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}/${post.id}/${Math.random()}.${fileExt}`;
+          const filePath = `${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('post-media')
+            .upload(filePath, file);
+
+          if (uploadError) throw uploadError;
+
+          await supabase.from('media_files').insert({
+            post_id: post.id,
+            file_path: filePath,
+            file_type: file.type.startsWith('image/') ? 'image' : 'video',
+            width: croppedAreas[i]?.width || null,
+            height: croppedAreas[i]?.height || null
+          });
+        }
+      }
 
       setContent('');
       setIsAnonymous(false);
+      setMediaFiles([]);
+      setPreviewUrls([]);
+      setCroppedAreas([]);
+      setShowOptions(false);
       toast.success('Post created successfully!');
       
-      // Refresh the feed (you'll need to implement this)
       window.location.reload();
     } catch (error: any) {
       toast.error(error.message);
@@ -72,35 +154,132 @@ export default function CreatePost() {
           rows={3}
         />
         
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              type="button"
-              className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-            >
-              <Image className="w-5 h-5" />
-              <span>Add Image</span>
-            </button>
-            
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={isAnonymous}
-                onChange={(e) => setIsAnonymous(e.target.checked)}
-                className="rounded text-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-              />
-              <span className="text-gray-600 dark:text-gray-300">Post Anonymously</span>
-            </label>
+        {/* Media Preview */}
+        {previewUrls.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+            {previewUrls.map((url, index) => (
+              <div key={url} className="relative aspect-square">
+                {mediaFiles[index].type.startsWith('image/') ? (
+                  <img
+                    src={url}
+                    alt=""
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <video
+                    src={url}
+                    className="w-full h-full object-cover rounded-lg"
+                    controls
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeFile(index)}
+                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
-          
-          <button
-            type="submit"
-            disabled={isLoading || !content.trim()}
-            className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-          >
-            <Send className="w-4 h-4" />
-            <span>Post</span>
-          </button>
+        )}
+
+        {/* Image Cropper Modal */}
+        {showCropper && mediaFiles[currentFileIndex]?.type.startsWith('image/') && (
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl">
+              <div className="relative h-96">
+                <Cropper
+                  image={previewUrls[currentFileIndex]}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                />
+              </div>
+              <div className="p-4 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowCropper(false)}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg"
+                >
+                  Done
+                </button>
+                {currentFileIndex < mediaFiles.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentFileIndex(prev => prev + 1)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+                  >
+                    Next Image
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Mobile-friendly Post Actions */}
+        <div className="mt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-4">
+              <div {...getRootProps()} className="relative">
+                <input {...getInputProps()} />
+                <button
+                  type="button"
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <Image className="w-5 h-5" />
+                  <Video className="w-5 h-5" />
+                  <span className="hidden sm:inline">Add Media</span>
+                </button>
+                {isDragActive && (
+                  <div className="absolute inset-0 bg-blue-500 bg-opacity-20 rounded-lg border-2 border-blue-500 border-dashed" />
+                )}
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setShowOptions(!showOptions)}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <Shield className="w-5 h-5" />
+                <span className="hidden sm:inline">Options</span>
+                <ChevronDown className={`w-4 h-4 transform transition-transform ${showOptions ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={isLoading || (!content.trim() && mediaFiles.length === 0)}
+              className="w-full sm:w-auto px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              <Send className="w-4 h-4" />
+              <span>Post</span>
+            </button>
+          </div>
+
+          {/* Post Options Panel */}
+          {showOptions && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+            >
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="rounded text-blue-500 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500"
+                />
+                <span className="text-gray-700 dark:text-gray-300">Post Anonymously</span>
+              </label>
+            </motion.div>
+          )}
         </div>
       </form>
     </motion.div>
