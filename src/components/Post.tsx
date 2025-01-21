@@ -88,7 +88,16 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
 
   const handleDelete = async () => {
     try {
-      if (!currentUser?.is_superadmin && currentUser?.id !== post.user_id) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('is_superadmin')
+        .eq('id', user.id)
+        .single();
+
+      if (!currentUserProfile?.is_superadmin && user.id !== post.user_id) {
         throw new Error('Unauthorized');
       }
 
@@ -123,7 +132,16 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
 
   const handleEdit = async () => {
     try {
-      if (!currentUser?.is_superadmin && currentUser?.id !== post.user_id) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('is_superadmin')
+        .eq('id', user.id)
+        .single();
+
+      if (!currentUserProfile?.is_superadmin && user.id !== post.user_id) {
         throw new Error('Unauthorized');
       }
 
