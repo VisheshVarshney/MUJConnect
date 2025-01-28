@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Home, User, Bell, LogOut, Search, MessageCircle, Menu, Moon, Sun, X, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Home, User, Bell, LogOut, Search, MessageCircle, Moon, 
+  Sun, Shield, Utensils, Menu, X 
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
 import { useThemeStore } from '../lib/store';
 import { toast } from 'react-hot-toast';
 
@@ -12,27 +14,38 @@ export default function Layout() {
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [following, setFollowing] = useState<any[]>([]);
   const [message, setMessage] = useState('');
+  const [showAIChat, setShowAIChat] = useState(false);
   const { isDark, toggleDark } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const isFeedPage = location.pathname === '/feed';
 
   useEffect(() => {
     fetchNotifications();
-    fetchFollowing();
+    fetchCurrentUser();
   }, []);
 
-  useEffect(() => {
-    const isDark = useThemeStore.getState().isDark;
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+  const fetchCurrentUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        setCurrentUser(profile);
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error);
     }
-  }, []);
-  
+  };
+
+  const isAdmin = currentUser?.is_superadmin;
+
   const fetchNotifications = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -46,23 +59,6 @@ export default function Layout() {
       if (data) setNotifications(data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-    }
-  };
-
-  const fetchFollowing = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from('follows')
-        .select('following_id, profiles!follows_following_id_fkey(*)')
-        .eq('follower_id', user.id)
-        .limit(5);
-      
-      if (data) setFollowing(data);
-    } catch (error) {
-      console.error('Error fetching following:', error);
     }
   };
 
@@ -85,14 +81,14 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-sm z-50 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-amoled transition-colors duration-300">
+      {/* Top Navigation */}
+      <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-amoled shadow-sm z-50 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <Link to="/" className="text-2xl font-bold text-blue-500">
-                SocialApp
+                MUJ Connect
               </Link>
 
               <form onSubmit={handleSearch} className="hidden md:block">
@@ -102,52 +98,11 @@ export default function Layout() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search..."
-                    className="w-64 pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                    className="w-64 pl-10 pr-4 py-2 bg-gray-100 dark:bg-amoled-light border-0 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
                   />
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 </div>
               </form>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Link
-                to="/feed"
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400"
-              >
-                <Home className="w-6 h-6" />
-              </Link>
-              
-              <Link
-                to="/profile/me"
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400"
-              >
-                <User className="w-6 h-6" />
-              </Link>
-
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 relative"
-              >
-                <Bell className="w-6 h-6" />
-                {notifications.some(n => !n.is_read) && (
-                  <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full" />
-                )}
-              </button>
-
-              <button
-                onClick={() => toggleDark()}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400"
-              >
-                {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-500"
-              >
-                <LogOut className="w-6 h-6" />
-              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -161,6 +116,70 @@ export default function Layout() {
         </div>
       </nav>
 
+      {/* Left Sidebar - Modified for animation and retraction */}
+      <motion.div 
+        initial={{ width: isFeedPage ? 192 : 64 }}
+        animate={{ width: isFeedPage ? 192 : 64 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="fixed left-0 top-16 bottom-0 hidden md:block bg-white dark:bg-amoled shadow-lg z-40 overflow-hidden"
+      >
+        <div className="flex flex-col py-4 relative">
+          <Link to="/feed" className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
+            <Home className="icon" />
+            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+              Home
+            </span>
+          </Link>
+          
+          <Link to="/profile/me" className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
+            <User className="icon" />
+            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+              Profile
+            </span>
+          </Link>
+
+          <button onClick={() => setShowNotifications(!showNotifications)} className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
+            <Bell className="icon" />
+            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+              Notifications
+            </span>
+            {notifications.some(n => !n.is_read) && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+          </button>
+
+          <Link to="/muj-menus" className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
+            <Utensils className="icon" />
+            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+              MUJ Menus
+            </span>
+          </Link>
+
+          <button onClick={() => toggleDark()} className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
+            {isDark ? <Sun className="icon" /> : <Moon className="icon" />}
+            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+              {isDark ? 'Light Mode' : 'Dark Mode'}
+            </span>
+          </button>
+
+          {isAdmin && (
+            <Link to="/admin" className={`sidebar-item group text-red-500 ${!isFeedPage && 'justify-center'}`}>
+              <Shield className="icon" />
+              <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+                Admin
+              </span>
+            </Link>
+          )}
+
+          <button onClick={handleLogout} className={`sidebar-item group text-red-500 ${!isFeedPage && 'justify-center'}`}>
+            <LogOut className="icon" />
+            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+              Logout
+            </span>
+          </button>
+        </div>
+      </motion.div>
+
       {/* Mobile Menu */}
       <AnimatePresence>
         {showMobileMenu && (
@@ -169,7 +188,7 @@ export default function Layout() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'tween' }}
-            className="fixed inset-y-0 right-0 w-64 bg-white dark:bg-gray-800 shadow-lg z-50 md:hidden"
+            className="fixed inset-y-0 right-0 w-64 bg-white dark:bg-amoled shadow-lg z-50 md:hidden"
           >
             <div className="p-4">
               <div className="flex justify-between items-center mb-8">
@@ -185,7 +204,7 @@ export default function Layout() {
               <div className="space-y-4">
                 <Link
                   to="/feed"
-                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
                   onClick={() => setShowMobileMenu(false)}
                 >
                   <Home className="w-6 h-6" />
@@ -194,20 +213,11 @@ export default function Layout() {
 
                 <Link
                   to="/profile/me"
-                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
                   onClick={() => setShowMobileMenu(false)}
                 >
                   <User className="w-6 h-6" />
                   <span>Profile</span>
-                </Link>
-
-                <Link
-                  to="/search"
-                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Search className="w-6 h-6" />
-                  <span>Search</span>
                 </Link>
 
                 <button
@@ -215,7 +225,7 @@ export default function Layout() {
                     setShowNotifications(!showNotifications);
                     setShowMobileMenu(false);
                   }}
-                  className="flex items-center space-x-2 w-full p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="flex items-center space-x-2 w-full p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
                 >
                   <Bell className="w-6 h-6" />
                   <span>Notifications</span>
@@ -224,20 +234,40 @@ export default function Layout() {
                   )}
                 </button>
 
+                <Link
+                  to="/muj-menus"
+                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  <Utensils className="w-6 h-6" />
+                  <span>MUJ Menus</span>
+                </Link>
+
                 <button
                   onClick={() => {
                     toggleDark();
                     setShowMobileMenu(false);
                   }}
-                  className="flex items-center space-x-2 w-full p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="flex items-center space-x-2 w-full p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
                 >
                   {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
                   <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
                 </button>
 
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="flex items-center space-x-2 p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    <Shield className="w-6 h-6" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+
                 <button
                   onClick={handleLogout}
-                  className="flex items-center space-x-2 w-full p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  className="flex items-center space-x-2 w-full p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
                 >
                   <LogOut className="w-6 h-6" />
                   <span>Logout</span>
@@ -249,95 +279,79 @@ export default function Layout() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="pt-16 pb-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Outlet />
-          </motion.div>
-        </div>
-      </main>
-
-      {/* Right Sidebar - Following & Chat (Desktop only) */}
-      <div 
-        className="hidden md:block fixed right-0 top-16 bottom-0 transition-all duration-300"
-        style={{ width: showSidebar ? '320px' : '48px' }}
-      >
-        <button 
-          onClick={() => setShowSidebar(!showSidebar)}
-          className="absolute -left-4 top-4 bg-white dark:bg-gray-800 rounded-full shadow-lg p-2 z-10"
-        >
-          {showSidebar ? (
-            <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-          ) : (
-            <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-          )}
-        </button>
-
-        <div className={`h-full bg-white dark:bg-gray-800 shadow-lg overflow-hidden transition-all duration-300 ${
-          showSidebar ? 'opacity-100' : 'opacity-0'
-        }`}>
-          {/* Following Section */}
-          <div className="p-4 border-b dark:border-gray-700">
-            <h2 className="text-lg font-semibold mb-4 dark:text-white flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Following
-            </h2>
-            <div className="space-y-4">
-              {following.map((follow) => (
-                <Link
-                  key={follow.following_id}
-                  to={`/profile/${follow.following_id}`}
-                  className="block p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={follow.profiles.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${follow.profiles.username}`}
-                      alt=""
-                      className="w-10 h-10 rounded-full"
-                    />
-                    <div>
-                      <div className="font-medium dark:text-white">{follow.profiles.full_name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">@{follow.profiles.username}</div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+      <div className="flex">
+        {/* Main Content Area */}
+        <main className={`flex-1 pt-16 pb-8 min-h-screen ${isFeedPage ? 'md:ml-48' : 'md:ml-16'}`}>
+          <div className="max-w-7xl mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <Outlet />
+            </motion.div>
           </div>
+        </main>
+      </div>
 
-          {/* AI Chat Section */}
-          <div className="p-4">
-            <h2 className="text-lg font-semibold mb-4 dark:text-white flex items-center">
-              <MessageCircle className="w-5 h-5 mr-2" />
-              AI Assistant
-            </h2>
-            <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-                <p className="text-sm dark:text-white">How can I help you today?</p>
-              </div>
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-3 py-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+      {/* AI Chat Button & Panel */}
+      <AnimatePresence>
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="fixed bottom-6 right-6 z-50"
+        >
+          <button
+            onClick={() => setShowAIChat(!showAIChat)}
+            className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-600 transition-colors"
+          >
+            <MessageCircle className="w-6 h-6" />
+          </button>
+        </motion.div>
+
+        {showAIChat && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-20 right-6 w-80 bg-white dark:bg-amoled rounded-lg shadow-xl z-50"
+          >
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold dark:text-white">AI Assistant</h3>
                 <button
-                  onClick={() => setMessage('')}
-                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  onClick={() => setShowAIChat(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
-                  <MessageCircle className="w-5 h-5" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
+              
+              <div className="space-y-4">
+                <div className="bg-gray-50 dark:bg-amoled-light rounded-lg p-3 animate-fade-in">
+                  <p className="text-sm dark:text-white">How can I help you today?</p>
+                </div>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 px-3 py-2 border dark:border-gray-600 dark:bg-amoled-light dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => setMessage('')}
+                    className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Notifications Dropdown */}
       <AnimatePresence>
@@ -346,7 +360,7 @@ export default function Layout() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-16 right-4 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50"
+            className="fixed top-16 left-16 w-80 bg-white dark:bg-amoled rounded-lg shadow-xl z-50"
           >
             <div className="p-4">
               <h3 className="text-lg font-semibold mb-4 dark:text-white">Notifications</h3>
@@ -354,9 +368,9 @@ export default function Layout() {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-3 rounded-lg ${
+                    className={`p-3 rounded-lg animate-fade-in ${
                       notification.is_read 
-                        ? 'bg-gray-50 dark:bg-gray-700' 
+                        ? 'bg-gray-50 dark:bg-amoled-light' 
                         : 'bg-blue-50 dark:bg-blue-900'
                     }`}
                   >

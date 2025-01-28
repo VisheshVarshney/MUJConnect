@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { Settings, MapPin, Calendar, Camera, X } from 'lucide-react';
+import { Settings, MapPin, Calendar, Camera, X, UserMinus, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Post from '../components/Post';
@@ -15,6 +15,7 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [editForm, setEditForm] = useState({
     full_name: '',
     username: '',
@@ -29,6 +30,63 @@ export default function Profile() {
   useEffect(() => {
     loadProfile();
   }, [id]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      checkFollowStatus(profile.id);
+    }
+  }, [profile?.id]);
+
+  const checkFollowStatus = async (profileId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: follow } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', user.id)
+        .eq('following_id', profileId)
+        .single();
+
+      setIsFollowing(!!follow);
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+    }
+  };
+
+  const handleFollow = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please log in to follow users');
+        return;
+      }
+
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .match({ follower_id: user.id, following_id: profile.id });
+
+        if (error) throw error;
+        setIsFollowing(false);
+        toast.success('User unfollowed successfully');
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from('follows')
+          .insert({ follower_id: user.id, following_id: profile.id });
+
+        if (error) throw error;
+        setIsFollowing(true);
+        toast.success('User followed successfully');
+      }
+    } catch (error: any) {
+      toast.error('Error updating follow status');
+    }
+  };
 
   const loadProfile = async () => {
     try {
@@ -208,14 +266,38 @@ export default function Profile() {
               )}
             </div>
             
-            {(currentUser?.id === profile.id || currentUser?.is_superadmin) && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-              >
-                Edit Profile
-              </button>
-            )}
+            <div className="flex space-x-4">
+              {(currentUser?.id === profile.id || currentUser?.is_superadmin) && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                >
+                  Edit Profile
+                </button>
+              )}
+              {currentUser?.id !== profile.id && (
+                <button
+                  onClick={handleFollow}
+                  className={`px-6 py-2 rounded-full transition-colors flex items-center space-x-2 ${
+                    isFollowing
+                      ? 'bg-red-500 hover:bg-red-600 text-white'
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }`}
+                >
+                  {isFollowing ? (
+                    <>
+                      <UserMinus className="w-4 h-4" />
+                      <span>Unfollow</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      <span>Follow</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           <AnimatePresence>

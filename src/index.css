@@ -12,6 +12,33 @@ section {
   scroll-snap-stop: always;
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-amoled-light;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-600;
+}
+
+/* Hide scrollbar for right sidebar */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @keyframes ripple {
   0% {
     opacity: 0;
@@ -47,3 +74,90 @@ body {
 a, button {
   cursor: pointer;
 }
+
+/* Sidebar styles */
+.sidebar-item {
+  @apply relative flex items-center p-3 text-gray-600 dark:text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 transition-all duration-300;
+}
+
+.sidebar-item .icon {
+  @apply w-6 h-6 min-w-[24px];
+}
+
+.sidebar-item .text {
+  @apply ml-3 transition-opacity duration-300;
+}
+
+.sidebar-item:hover::after {
+  content: '';
+  @apply absolute inset-0 bg-blue-50 dark:bg-blue-900/20 rounded-lg -z-10;
+}
+
+/* Right sidebar animations */
+.right-sidebar {
+  @apply transform transition-transform duration-300;
+}
+
+.right-sidebar.closed {
+  @apply translate-x-full;
+}
+
+.right-sidebar.open {
+  @apply translate-x-0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulseLight {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes bounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes star-movement-bottom {
+  0% { transform: translate(0%, 0%); opacity: 1; }
+  100% { transform: translate(-100%, 0%); opacity: 0; }
+}
+
+@keyframes star-movement-top {
+  0% { transform: translate(0%, 0%); opacity: 1; }
+  100% { transform: translate(100%, 0%); opacity: 0; }
+}
+
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+.animate-slide-up { animation: slideUp 0.5s ease-out; }
+.animate-scale-in { animation: scaleIn 0.3s ease-out; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-pulse-light { animation: pulseLight 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.animate-shimmer { animation: shimmer 2s infinite linear; }
+.animate-bounce-soft { animation: bounceSoft 2s infinite; }
+.animate-star-movement-bottom { animation: star-movement-bottom linear infinite alternate; }
+.animate-star-movement-top { animation: star-movement-top linear infinite alternate; }

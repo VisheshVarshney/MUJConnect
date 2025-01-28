@@ -8,7 +8,6 @@ import {
   MoreVertical,
   Edit2,
   Trash2,
-  X,
   Send,
   ChevronLeft,
   ChevronRight,
@@ -47,24 +46,39 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
   }, [post.comments]);
 
   const fetchMediaFiles = async () => {
-    const { data } = await supabase
-      .from('media_files')
-      .select('*')
-      .eq('post_id', post.id)
-      .order('created_at', { ascending: true });
-    
-    if (data) {
-      const filesWithUrls = await Promise.all(data.map(async (file) => {
-        const { data: { publicUrl } } = supabase.storage
-          .from('post-media')
-          .getPublicUrl(file.file_path);
-        return { ...file, url: publicUrl };
-      }));
-      setMediaFiles(filesWithUrls);
+    try {
+      const { data } = await supabase
+        .from('media_files')
+        .select('*')
+        .eq('post_id', post.id)
+        .order('created_at', { ascending: true });
+      
+      if (data) {
+        const filesWithUrls = await Promise.all(data.map(async (file) => {
+          try {
+            const { data: { publicUrl } } = supabase.storage
+              .from('post-media')
+              .getPublicUrl(file.file_path);
+            return { ...file, url: publicUrl };
+          } catch (error) {
+            console.error('Error getting public URL:', error);
+            return null;
+          }
+        }));
+        
+        setMediaFiles(filesWithUrls.filter(Boolean));
+      }
+    } catch (error) {
+      console.error('Error fetching media files:', error);
     }
   };
 
   const handleLike = async () => {
+    if (!currentUser) {
+      toast.error('Please log in to like posts');
+      return;
+    }
+
     try {
       if (isLiked) {
         await supabase
@@ -88,17 +102,15 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
 
   const handleDelete = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!currentUser) {
+        toast.error('Please log in to delete posts');
+        return;
+      }
 
-      const { data: currentUserProfile } = await supabase
-        .from('profiles')
-        .select('is_superadmin')
-        .eq('id', user.id)
-        .single();
-
-      if (!currentUserProfile?.is_superadmin && user.id !== post.user_id) {
-        throw new Error('Unauthorized');
+      // Check if user is authorized (owner or superadmin)
+      if (!currentUser.is_superadmin && currentUser.id !== post.user_id) {
+        toast.error('Unauthorized to delete this post');
+        return;
       }
 
       // Delete media files from storage
@@ -108,19 +120,13 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
           .remove([file.file_path]);
       }
 
-      // Delete all likes
-      await supabase.from('likes').delete().eq('post_id', post.id);
-
-      // Delete all comments
-      await supabase.from('comments').delete().eq('post_id', post.id);
-
-      // Delete media files records
-      await supabase.from('media_files').delete().eq('post_id', post.id);
-
-      // Finally delete the post
-      const { error } = await supabase.from('posts').delete().eq('id', post.id);
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', post.id);
 
       if (error) throw error;
+      
       toast.success('Post deleted successfully');
       onDelete?.();
       setShowMenu(false);
@@ -131,18 +137,16 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
   };
 
   const handleEdit = async () => {
+    if (!currentUser) {
+      toast.error('Please log in to edit posts');
+      return;
+    }
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: currentUserProfile } = await supabase
-        .from('profiles')
-        .select('is_superadmin')
-        .eq('id', user.id)
-        .single();
-
-      if (!currentUserProfile?.is_superadmin && user.id !== post.user_id) {
-        throw new Error('Unauthorized');
+      // Check if user is authorized (owner or superadmin)
+      if (!currentUser.is_superadmin && currentUser.id !== post.user_id) {
+        toast.error('Unauthorized to edit this post');
+        return;
       }
 
       const { error } = await supabase
@@ -151,6 +155,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
         .eq('id', post.id);
 
       if (error) throw error;
+      
       post.content = content;
       setIsEditing(false);
       toast.success('Post updated successfully');
@@ -173,6 +178,11 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
   };
 
   const handleAddComment = async () => {
+    if (!currentUser) {
+      toast.error('Please log in to comment');
+      return;
+    }
+
     if (!newComment.trim()) return;
 
     try {
@@ -214,39 +224,38 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
   };
 
   const displayedComments = showAllComments ? comments : comments.slice(0, 3);
+  const canModifyPost = currentUser?.is_superadmin || currentUser?.id === post.user_id;
+  const showUserInfo = !post.is_anonymous || currentUser?.is_superadmin;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+      className="bg-white dark:bg-amoled rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300 animate-fade-in"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          {!post.is_anonymous || currentUser?.is_superadmin ? (
+          {showUserInfo ? (
             <Link to={`/profile/${post.profiles.id}`}>
               <img
-                src={
-                  post.profiles.avatar_url ||
-                  `https://api.dicebear.com/7.x/pixel-art/svg?seed=${post.profiles.username}`
-                }
+                src={post.profiles.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${post.profiles.username}`}
                 alt={post.profiles.username}
                 className="w-10 h-10 rounded-full"
               />
             </Link>
           ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-amoled-light flex items-center justify-center">
               <User className="w-6 h-6 text-gray-500 dark:text-gray-400" />
             </div>
           )}
 
           <div>
-            {!post.is_anonymous || currentUser?.is_superadmin ? (
+            {showUserInfo ? (
               <Link
                 to={`/profile/${post.profiles.id}`}
                 className="font-semibold text-gray-900 dark:text-white hover:underline"
               >
-                {post.is_anonymous ? 'Anonymous (View Profile)' : post.profiles.full_name}
+                {post.profiles.full_name}
               </Link>
             ) : (
               <span className="font-semibold text-gray-900 dark:text-white">
@@ -259,7 +268,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
           </div>
         </div>
 
-        {(currentUser?.is_superadmin || currentUser?.id === post.user_id) && (
+        {canModifyPost && (
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
@@ -269,20 +278,20 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-10">
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-amoled rounded-lg shadow-lg z-10">
                 <button
                   onClick={() => {
                     setIsEditing(true);
                     setShowMenu(false);
                   }}
-                  className="flex items-center space-x-2 w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="flex items-center space-x-2 w-full px-4 py-2 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-amoled-light"
                 >
                   <Edit2 className="w-4 h-4" />
                   <span>Edit</span>
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="flex items-center space-x-2 w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="flex items-center space-x-2 w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100 dark:hover:bg-amoled-light"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete</span>
@@ -298,7 +307,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full p-3 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border dark:border-gray-600 dark:bg-amoled-light dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={3}
           />
           <div className="mt-2 flex justify-end space-x-2">
@@ -324,7 +333,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
       )}
 
       {mediaFiles.length > 0 && (
-        <div className="mt-4 relative">
+        <div className="mt-4 relative animate-scale-in">
           <div className="aspect-square rounded-lg overflow-hidden bg-black">
             {mediaFiles[currentMediaIndex].file_type === 'image' ? (
               <img
@@ -424,7 +433,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Add a comment..."
-            className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white dark:placeholder-gray-400"
+            className="flex-1 px-4 py-2 bg-gray-50 dark:bg-amoled-light border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white dark:placeholder-gray-400"
           />
           <button
             onClick={handleAddComment}
@@ -436,8 +445,8 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
         </div>
       </div>
 
-      {comments.length > 0 && (
-        <div className="mt-4 space-y-4">
+      {comments.length > 0 && showComments && (
+        <div className="mt-4 space-y-4 animate-slide-up">
           {displayedComments.map((comment) => (
             <div key={comment.id} className="flex space-x-3">
               <img
@@ -449,7 +458,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
                 className="w-8 h-8 rounded-full"
               />
               <div className="flex-1">
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                <div className="bg-gray-50 dark:bg-amoled-light rounded-lg p-3">
                   <div className="font-medium dark:text-white">
                     {comment.profiles.full_name}
                   </div>

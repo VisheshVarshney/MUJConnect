@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Send as Send2, Image, Shield } from 'lucide-react';
+import { Send, Image, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useDropzone } from 'react-dropzone';
@@ -9,7 +9,11 @@ import Cropper from 'react-easy-crop';
 interface Point { x: number; y: number }
 interface Area { x: number; y: number; width: number; height: number }
 
-export default function CreatePost() {
+interface CreatePostProps {
+  disabled?: boolean;
+}
+
+export default function CreatePost({ disabled = false }: CreatePostProps) {
   const [content, setContent] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,27 +24,6 @@ export default function CreatePost() {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreas, setCroppedAreas] = useState<Area[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  useEffect(() => {
-    getCurrentUser();
-  }, []);
-
-  const getCurrentUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        setCurrentUser(profile);
-      }
-    } catch (error) {
-      console.error('Error fetching user:', error);
-    }
-  };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const validFiles = acceptedFiles.filter(file => 
@@ -91,22 +74,6 @@ export default function CreatePost() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (!profile) {
-        await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            username: user.email?.split('@')[0],
-            full_name: 'User'
-          });
-      }
 
       const { data: post, error: postError } = await supabase
         .from('posts')
@@ -162,128 +129,122 @@ export default function CreatePost() {
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6 mb-6 mt-4"
+      className="bg-white dark:bg-amoled rounded-xl shadow-md p-4 sm:p-6 mb-6 mt-4 animate-fade-in"
     >
       <form onSubmit={handleSubmit}>
-        <div className="flex items-start space-x-4">
-          <img
-            src={currentUser?.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${currentUser?.username}`}
-            alt={currentUser?.username}
-            className="w-10 h-10 rounded-full"
-          />
-          <div className="flex-1">
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What's on your mind?"
-              className="w-full p-4 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:text-white dark:placeholder-gray-400"
-              rows={2}
-            />
-            
-            {previewUrls.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-                {previewUrls.map((url, index) => (
-                  <div key={url} className="relative aspect-square">
-                    {mediaFiles[index].type.startsWith('image/') ? (
-                      <img
-                        src={url}
-                        alt=""
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : (
-                      <video
-                        src={url}
-                        className="w-full h-full object-cover rounded-lg"
-                        controls
-                      />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <div {...getRootProps()}>
-                  <input {...getInputProps()} />
-                  <button
-                    type="button"
-                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Image className="w-5 h-5" />
-                    <span className="hidden sm:inline">Media</span>
-                  </button>
-                </div>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder={disabled ? "Log in to create posts" : "What's on your mind?"}
+          className="w-full p-4 rounded-lg bg-gray-50 dark:bg-amoled-light border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:text-white dark:placeholder-gray-400"
+          rows={2}
+          disabled={disabled}
+        />
+        
+        {previewUrls.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 animate-scale-in">
+            {previewUrls.map((url, index) => (
+              <div key={url} className="relative aspect-square max-h-48">
+                {mediaFiles[index].type.startsWith('image/') ? (
+                  <img
+                    src={url}
+                    alt=""
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <video
+                    src={url}
+                    className="w-full h-full object-cover rounded-lg"
+                    controls
+                  />
+                )}
                 <button
                   type="button"
-                  onClick={() => setIsAnonymous(!isAnonymous)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isAnonymous 
-                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
+                  onClick={() => removeFile(index)}
+                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 animate-pulse-light"
                 >
-                  <Shield className="w-5 h-5" />
-                  <span className="hidden sm:inline">Anonymous</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
+            ))}
+          </div>
+        )}
 
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div {...getRootProps()}>
+              <input {...getInputProps()} disabled={disabled} />
               <button
-                type="submit"
-                disabled={isLoading || (!content.trim() && mediaFiles.length === 0)}
-                className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                type="button"
+                disabled={disabled}
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send2 className="w-5 h-5" />
+                <Image className="w-5 h-5" />
+                <span className="hidden sm:inline">Media</span>
               </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAnonymous(!isAnonymous)}
+              disabled={disabled}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isAnonymous 
+                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light'
+              }`}
+            >
+              <Shield className="w-5 h-5" />
+              <span className="hidden sm:inline">Anonymous</span>
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={disabled || isLoading || (!content.trim() && mediaFiles.length === 0)}
+            className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center animate-pulse-light"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
+      </form>
+
+      {showCropper && mediaFiles[currentFileIndex]?.type.startsWith('image/') && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-amoled rounded-lg w-full max-w-xl animate-scale-in">
+            <div className="relative h-80">
+              <Cropper
+                image={previewUrls[currentFileIndex]}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div className="p-4 flex justify-between">
+              <button
+                type="button"
+                onClick={() => setShowCropper(false)}
+                className="px-4 py-2 bg-gray-200 dark:bg-amoled-light text-gray-700 dark:text-gray-300 rounded-lg"
+              >
+                Done
+              </button>
+              {currentFileIndex < mediaFiles.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentFileIndex(prev => prev + 1)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+                >
+                  Next Image
+                </button>
+              )}
             </div>
           </div>
         </div>
-
-        {showCropper && mediaFiles[currentFileIndex]?.type.startsWith('image/') && (
-          <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl">
-              <div className="relative h-96">
-                <Cropper
-                  image={previewUrls[currentFileIndex]}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={1}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={onCropComplete}
-                />
-              </div>
-              <div className="p-4 flex justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowCropper(false)}
-                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg"
-                >
-                  Done
-                </button>
-                {currentFileIndex < mediaFiles.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setCurrentFileIndex(prev => prev + 1)}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-                  >
-                    Next Image
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </form>
+      )}
     </motion.div>
   );
 }
