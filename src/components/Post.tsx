@@ -238,7 +238,7 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
           {showUserInfo ? (
             <Link to={`/profile/${post.profiles.id}`}>
               <img
-                src={post.profiles.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${post.profiles.username}`}
+                src={post.profiles.avatar_url || `https://api.dicebear.com/9.x/big-ears-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
                 alt={post.profiles.username}
                 className="w-10 h-10 rounded-full"
               />

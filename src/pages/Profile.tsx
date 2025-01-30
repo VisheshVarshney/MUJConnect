@@ -2,10 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { Settings, MapPin, Calendar, Camera, X, UserMinus, UserPlus } from 'lucide-react';
+import { Settings, MapPin, Calendar, Camera, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Post from '../components/Post';
+import FancyFollowButton from '../components/FancyFollowButton';
+import Cropper from 'react-easy-crop';
+
+interface Point { x: number; y: number }
+interface Area { x: number; y: number; width: number; height: number }
 
 export default function Profile() {
   const { id } = useParams();
@@ -16,6 +21,13 @@ export default function Profile() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
+  const [showCropper, setShowCropper] = useState(false);
+  const [image, setImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const [editForm, setEditForm] = useState({
     full_name: '',
     username: '',
@@ -34,8 +46,32 @@ export default function Profile() {
   useEffect(() => {
     if (profile?.id) {
       checkFollowStatus(profile.id);
+      fetchFollowCounts();
     }
   }, [profile?.id]);
+
+  const fetchFollowCounts = async () => {
+    if (!profile?.id) return;
+
+    try {
+      // Get followers
+      const { data: followersData } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('following_id', profile.id);
+
+      // Get following
+      const { data: followingData } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', profile.id);
+
+      setFollowers(followersData || []);
+      setFollowing(followingData || []);
+    } catch (error) {
+      console.error('Error fetching follow counts:', error);
+    }
+  };
 
   const checkFollowStatus = async (profileId: string) => {
     try {
@@ -72,6 +108,7 @@ export default function Profile() {
 
         if (error) throw error;
         setIsFollowing(false);
+        setFollowers(prev => prev.filter(f => f.follower_id !== user.id));
         toast.success('User unfollowed successfully');
       } else {
         // Follow
@@ -81,6 +118,7 @@ export default function Profile() {
 
         if (error) throw error;
         setIsFollowing(true);
+        setFollowers(prev => [...prev, { follower_id: user.id }]);
         toast.success('User followed successfully');
       }
     } catch (error: any) {
@@ -186,13 +224,73 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImage(reader.result as string);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedArea(croppedAreaPixels);
+  };
+
+  const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener('load', () => resolve(image));
+      image.addEventListener('error', error => reject(error));
+      image.src = url;
+    });
+
+  const getCroppedImg = async (
+    imageSrc: string,
+    pixelCrop: Area
+  ): Promise<Blob> => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('No 2d context');
+    }
+
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Canvas is empty');
+        }
+        resolve(blob);
+      }, 'image/jpeg');
+    });
+  };
+
+  const handleSaveCroppedImage = async () => {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${profile.id}/${Math.random()}.${fileExt}`;
+      if (!image || !croppedArea) return;
+
+      const croppedImage = await getCroppedImg(image, croppedArea);
+      const fileName = `${profile.id}/${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file);
+        .upload(fileName, croppedImage);
 
       if (uploadError) throw uploadError;
 
@@ -212,6 +310,8 @@ export default function Profile() {
         avatar_url: publicUrl
       });
 
+      setShowCropper(false);
+      setImage(null);
       toast.success('Avatar updated successfully');
     } catch (error: any) {
       toast.error('Error uploading avatar');
@@ -276,26 +376,11 @@ export default function Profile() {
                 </button>
               )}
               {currentUser?.id !== profile.id && (
-                <button
-                  onClick={handleFollow}
-                  className={`px-6 py-2 rounded-full transition-colors flex items-center space-x-2 ${
-                    isFollowing
-                      ? 'bg-red-500 hover:bg-red-600 text-white'
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                  }`}
-                >
-                  {isFollowing ? (
-                    <>
-                      <UserMinus className="w-4 h-4" />
-                      <span>Unfollow</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      <span>Follow</span>
-                    </>
-                  )}
-                </button>
+                <FancyFollowButton
+                  isFollowing={isFollowing}
+                  onToggleFollow={handleFollow}
+                  disabled={!currentUser}
+                />
               )}
             </div>
           </div>
@@ -433,11 +518,11 @@ export default function Profile() {
                     <div className="text-gray-600 dark:text-gray-400">Posts</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-bold text-gray-900 dark:text-white">0</div>
+                    <div className="font-bold text-gray-900 dark:text-white">{followers.length}</div>
                     <div className="text-gray-600 dark:text-gray-400">Followers</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-bold text-gray-900 dark:text-white">0</div>
+                    <div className="font-bold text-gray-900 dark:text-white">{following.length}</div>
                     <div className="text-gray-600 dark:text-gray-400">Following</div>
                   </div>
                 </div>

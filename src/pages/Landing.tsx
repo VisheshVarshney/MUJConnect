@@ -201,15 +201,13 @@ export default function Landing() {
                 name: 'Vishesh Varshney',
                 role: 'Main Developer',
                 desc: 'Website Design and Implementation',
-                image:
-                  'https://media.discordapp.net/attachments/1329012705125728299/1330843203787816990/image.png?ex=678f73d1&is=678e2251&hm=acf248f2282053d81f75ff7c9967bff50b63b0e2b0f55e06cb6f20238b7423d1&=&format=webp&quality=lossless&width=552&height=516',
+                image:'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1738144940/vishesh.png',
               },
               {
                 name: 'Harshit Raj',
                 role: 'Co-Developer',
                 desc: 'Dataset Collection and AI Training',
-                image:
-                  'https://media.discordapp.net/attachments/1329012705125728299/1330843204098064465/image.png?ex=678f73d1&is=678e2251&hm=04e71895075d0f0065b56bc12214441bbeb019484f259b48445e3c1bfbb8a039&=&format=webp&quality=lossless&width=476&height=386',
+                image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1738144940/harshit.png',
               },
             ].map((dev, index) => (
               <animated.div

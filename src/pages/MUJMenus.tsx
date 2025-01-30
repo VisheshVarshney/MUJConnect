@@ -14,66 +14,88 @@ const restaurants = [
     timings: '10:00 AM - 4:00 AM',
     contact: ['0123456789'],
   },
-  // ... (keep other restaurants data)
+  {
+    id: 2,
+    name: 'Zaika',
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
+    description: 'Flavor-packed, budget-friendly veg and non-veg heaven.',
+    location: 'B1 - GHS',
+    timings: '10:00 AM - 4:00 AM',
+    contact: ['0123456789'],
+  },
+  {
+    id: 3,
+    name: 'Chatkara',
+    image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1738147093/twwlwvefeztiay4k5c0j.png',
+    description: 'The ultimate stop for smoky, spicy, and satisfying eats.',
+    location: 'B1 - GHS',
+    timings: '10:00 AM - 4:00 AM',
+    contact: ['0123456789'],
+  },
 ];
 
 export default function MUJMenus() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 dark:text-white">
-        MUJ Restaurants
+        MUJ Restaurants [BETA]
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {restaurants.map((restaurant) => (
           <Link
             key={restaurant.id}
             to={`/menu/${restaurant.id}`}
             className="block"
           >
-            <TiltedCard
-              imageSrc={restaurant.banner}
-              altText={restaurant.name}
-              containerHeight="400px"
-              containerWidth="100%"
-              showMobileWarning={false}
-              displayOverlayContent={true}
-              overlayContent={
-                <div className="absolute inset-0 p-6 flex flex-col justify-between z-10 bg-gradient-to-t from-black/80 via-black/50 to-transparent rounded-[15px]">
-                  <div className="flex justify-center">
-                    <img
-                      src={restaurant.logo}
-                      alt={`${restaurant.name} logo`}
-                      className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
-                    />
-                  </div>
-
-                  <div className="mt-auto">
-                    <h2 className="text-2xl font-bold text-white mb-2 line-clamp-1">
-                      {restaurant.name}
-                    </h2>
-                    <p className="text-blue-100 mb-4 line-clamp-2 text-sm">
-                      {restaurant.description}
-                    </p>
+            <div className="relative h-[400px]">
+              <TiltedCard
+                imageSrc={restaurant.banner || restaurant.image}
+                altText={restaurant.name}
+                captionText={restaurant.description}
+                containerHeight="400px"
+                containerWidth="100%"
+                imageHeight="400px"
+                imageWidth="100%"
+                scaleOnHover={1.05}
+                rotateAmplitude={7}
+                showMobileWarning={false}
+                displayOverlayContent={true}
+                overlayContent={
+                  <div className="absolute inset-0 p-6 flex flex-col justify-between bg-black bg-opacity-50 rounded-[15px]">
+                    <div className="flex items-center space-x-4">
+                      <img
+                        src={restaurant.logo || restaurant.image}
+                        alt={`${restaurant.name} logo`}
+                        className="w-16 h-16 rounded-full object-cover border-2 border-white"
+                      />
+                      <div>
+                        <h2 className="text-xl font-bold text-white">
+                          {restaurant.name}
+                        </h2>
+                        <p className="text-sm text-gray-200">
+                        </p>
+                      </div>
+                    </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center text-blue-100 text-sm truncate">
-                        <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span className="truncate">{restaurant.location}</span>
+                      <div className="flex items-center text-white">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {restaurant.location}
                       </div>
-                      <div className="flex items-center text-blue-100 text-sm truncate">
-                        <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span className="truncate">{restaurant.timings}</span>
+                      <div className="flex items-center text-white">
+                        <Clock className="w-4 h-4 mr-2" />
+                        {restaurant.timings}
                       </div>
-                      <div className="flex items-center text-blue-100 text-sm truncate">
-                        <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span className="truncate">{restaurant.contact[0]}</span>
+                      <div className="flex items-center text-white">
+                        <Phone className="w-4 h-4 mr-2" />
+                        {restaurant.contact[0]}
                       </div>
                     </div>
                   </div>
-                </div>
-              }
-            />
+                }
+              />
+            </div>
           </Link>
         ))}
       </div>

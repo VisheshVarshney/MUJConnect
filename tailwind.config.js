@@ -18,8 +18,7 @@ export default {
         'shimmer': 'shimmer 2s infinite linear',
         'bounce-soft': 'bounceSoft 2s infinite',
         'star-movement-bottom': 'star-movement-bottom linear infinite alternate',
-        'star-movement-top': 'star-movement-top linear infinite alternate',
-        'shine': 'shine 5s linear infinite'
+        'star-movement-top': 'star-movement-top linear infinite alternate'
       },
       keyframes: {
         fadeIn: {
@@ -57,10 +56,6 @@ export default {
         'star-movement-top': {
           '0%': { transform: 'translate(0%, 0%)', opacity: '1' },
           '100%': { transform: 'translate(100%, 0%)', opacity: '0' }
-        },
-        shine: {
-          '0%': { 'background-position': '200% center' },
-          '100%': { 'background-position': '-200% center' }
         }
       }
     }

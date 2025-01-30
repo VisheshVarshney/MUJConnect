@@ -31,16 +31,36 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
     ).slice(0, 10);
 
     if (validFiles.length > 0) {
-      setMediaFiles(prev => [...prev, ...validFiles]);
-      const newPreviewUrls = validFiles.map(file => URL.createObjectURL(file));
-      setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
-      
-      if (validFiles[0].type.startsWith('image/')) {
-        setCurrentFileIndex(mediaFiles.length);
-        setShowCropper(true);
-      }
+      const newFiles = [...mediaFiles];
+      const newPreviewUrls = [...previewUrls];
+      const newCroppedAreas = [...croppedAreas];
+
+      validFiles.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            newFiles.push(file);
+            newPreviewUrls.push(reader.result as string);
+            newCroppedAreas.push({ x: 0, y: 0, width: 0, height: 0 });
+            
+            if (file === validFiles[0]) {
+              setCurrentFileIndex(mediaFiles.length);
+              setShowCropper(true);
+            }
+          };
+          reader.readAsDataURL(file);
+        } else {
+          newFiles.push(file);
+          newPreviewUrls.push(URL.createObjectURL(file));
+          newCroppedAreas.push({ x: 0, y: 0, width: 0, height: 0 });
+        }
+      });
+
+      setMediaFiles(newFiles);
+      setPreviewUrls(newPreviewUrls);
+      setCroppedAreas(newCroppedAreas);
     }
-  }, [mediaFiles.length]);
+  }, [mediaFiles, previewUrls, croppedAreas]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -51,11 +71,69 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
     maxSize: 10485760,
   });
 
-  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
-    const newCroppedAreas = [...croppedAreas];
-    newCroppedAreas[currentFileIndex] = croppedAreaPixels;
-    setCroppedAreas(newCroppedAreas);
-  }, [croppedAreas, currentFileIndex]);
+  const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener('load', () => resolve(image));
+      image.addEventListener('error', error => reject(error));
+      image.src = url;
+    });
+
+  const getCroppedImg = async (
+    imageSrc: string,
+    pixelCrop: Area
+  ): Promise<Blob> => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('No 2d context');
+    }
+
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Canvas is empty');
+        }
+        resolve(blob);
+      }, 'image/jpeg');
+    });
+  };
+
+  const onCropComplete = useCallback(async (croppedArea: Area, croppedAreaPixels: Area) => {
+    try {
+      const newCroppedAreas = [...croppedAreas];
+      newCroppedAreas[currentFileIndex] = croppedAreaPixels;
+      setCroppedAreas(newCroppedAreas);
+
+      if (mediaFiles[currentFileIndex].type.startsWith('image/')) {
+        const croppedImage = await getCroppedImg(previewUrls[currentFileIndex], croppedAreaPixels);
+        const newMediaFiles = [...mediaFiles];
+        newMediaFiles[currentFileIndex] = new File([croppedImage], mediaFiles[currentFileIndex].name, {
+          type: 'image/jpeg'
+        });
+        setMediaFiles(newMediaFiles);
+      }
+    } catch (error) {
+      console.error('Error cropping image:', error);
+    }
+  }, [croppedAreas, currentFileIndex, mediaFiles, previewUrls]);
 
   const removeFile = (index: number) => {
     setMediaFiles(prev => prev.filter((_, i) => i !== index));
