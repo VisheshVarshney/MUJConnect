@@ -196,7 +196,7 @@ export default function AdminPanel() {
                 <div className="flex-1">
                   <div className="flex items-center mb-2">
                     <img
-                      src={post.profiles.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${post.profiles.username}`}
+                      src={post.profiles.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
                       alt=""
                       className="w-8 h-8 rounded-full mr-2"
                     />
@@ -226,7 +226,7 @@ export default function AdminPanel() {
               <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-amoled-light rounded-lg">
                 <div className="flex items-center">
                   <img
-                    src={user.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${user.username}`}
+                    src={user.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
                     alt=""
                     className="w-10 h-10 rounded-full mr-3"
                   />

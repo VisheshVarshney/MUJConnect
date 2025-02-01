@@ -166,7 +166,7 @@ export default function Search() {
                     className="flex items-center space-x-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm"
                   >
                     <img
-                      src={user.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${user.username}`}
+                      src={user.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
                       alt=""
                       className="w-12 h-12 rounded-full"
                     />

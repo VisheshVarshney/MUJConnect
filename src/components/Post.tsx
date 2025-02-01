@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import CustomVideoPlayer from './CustomVideoPlayer';
 
 interface PostProps {
   post: any;
@@ -342,10 +343,9 @@ export default function Post({ post, currentUser, onDelete }: PostProps) {
                 className="w-full h-full object-contain"
               />
             ) : (
-              <video
+              <CustomVideoPlayer
                 src={mediaFiles[currentMediaIndex].url}
-                className="w-full h-full object-contain"
-                controls
+                className="w-full h-full"
               />
             )}
           </div>

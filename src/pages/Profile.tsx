@@ -349,7 +349,7 @@ export default function Profile() {
           <div className="flex justify-between items-end -mt-16">
             <div className="relative">
               <img
-                src={profile.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${profile.username}`}
+                src={profile.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
                 alt={profile.username}
                 className="w-32 h-32 rounded-full border-4 border-white bg-white dark:border-gray-800"
               />

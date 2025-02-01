@@ -1,11 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Camera } from 'lucide-react';
-import Cropper from 'react-easy-crop';
+import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-
-interface Point { x: number; y: number }
-interface Area { x: number; y: number; width: number; height: number }
 
 interface ProfileImageProps {
   currentUser: any;
@@ -13,16 +11,40 @@ interface ProfileImageProps {
   onUpdate: (url: string) => void;
 }
 
+function centerAspectCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect: number,
+) {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 90,
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight,
+    ),
+    mediaWidth,
+    mediaHeight,
+  );
+}
+
 export default function ProfileImage({ currentUser, profile, onUpdate }: ProfileImageProps) {
   const [showCropper, setShowCropper] = useState(false);
   const [image, setImage] = useState<string | null>(null);
-  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         setImage(reader.result as string);
@@ -32,50 +54,63 @@ export default function ProfileImage({ currentUser, profile, onUpdate }: Profile
     }
   };
 
-  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
-    setCroppedArea(croppedAreaPixels);
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const crop = centerAspectCrop(width, height, 1);
+    setCrop(crop);
+  };
+
+  const getCroppedImg = useCallback(async (
+    image: HTMLImageElement,
+    crop: PixelCrop,
+  ): Promise<Blob> => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('No 2D context');
+    }
+
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+
+    ctx.drawImage(
+      image,
+      crop.x,
+      crop.y,
+      crop.width,
+      crop.height,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (!blob) {
+          reject(new Error('Canvas is empty'));
+          return;
+        }
+        resolve(blob);
+      }, 'image/jpeg', 1);
+    });
   }, []);
 
   const handleSave = async () => {
-    if (!image || !croppedArea) return;
-
     try {
-      // Create a canvas to draw the cropped image
-      const canvas = document.createElement('canvas');
-      const img = new Image();
-      img.src = image;
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
+      if (!imgRef.current || !completedCrop) {
+        throw new Error('Crop not complete');
+      }
 
-      canvas.width = croppedArea.width;
-      canvas.height = croppedArea.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.drawImage(
-        img,
-        croppedArea.x,
-        croppedArea.y,
-        croppedArea.width,
-        croppedArea.height,
-        0,
-        0,
-        croppedArea.width,
-        croppedArea.height
-      );
-
-      // Convert canvas to blob
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-        }, 'image/jpeg', 0.95);
-      });
-
+      const croppedImage = await getCroppedImg(imgRef.current, completedCrop);
       const fileName = `${profile.id}/${Date.now()}.jpg`;
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, blob);
+        .upload(fileName, croppedImage, {
+          contentType: 'image/jpeg'
+        });
 
       if (uploadError) throw uploadError;
 
@@ -93,16 +128,17 @@ export default function ProfileImage({ currentUser, profile, onUpdate }: Profile
       onUpdate(publicUrl);
       setShowCropper(false);
       setImage(null);
-      toast.success('Avatar updated successfully');
+      toast.success('Profile picture updated successfully');
     } catch (error: any) {
-      toast.error('Error uploading avatar');
+      console.error('Error updating profile picture:', error);
+      toast.error('Failed to update profile picture');
     }
   };
 
   return (
     <div className="relative">
       <img
-        src={profile.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${profile.username}`}
+        src={profile.avatar_url || `https://api.dicebear.com/9.x/big-ears-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
         alt={profile.username}
         className="w-32 h-32 rounded-full border-4 border-white bg-white dark:border-gray-800"
       />
@@ -121,32 +157,44 @@ export default function ProfileImage({ currentUser, profile, onUpdate }: Profile
       {showCropper && image && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl">
-            <div className="relative h-96">
-              <Cropper
-                image={image}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-              />
+            <div className="p-4 border-b dark:border-gray-700">
+              <h3 className="text-lg font-semibold dark:text-white">
+                Crop Profile Picture
+              </h3>
             </div>
-            <div className="p-4 flex justify-between">
+            <div className="relative h-[60vh] md:h-[70vh]">
+              <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={1}
+                circularCrop
+                className="h-full"
+              >
+                <img
+                  ref={imgRef}
+                  alt="Crop me"
+                  src={image}
+                  onLoad={onImageLoad}
+                  className="h-full max-w-full mx-auto"
+                />
+              </ReactCrop>
+            </div>
+            <div className="p-4 flex justify-end space-x-2 border-t dark:border-gray-700">
               <button
                 type="button"
                 onClick={() => {
                   setShowCropper(false);
                   setImage(null);
                 }}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg"
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
               >
                 Save
               </button>

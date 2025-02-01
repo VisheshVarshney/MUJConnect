@@ -256,7 +256,7 @@ export default function Feed() {
                     >
                       <div className="flex items-center space-x-3">
                         <img
-                          src={follow.profiles.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${follow.profiles.username}`}
+                          src={follow.profiles.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
                           alt=""
                           className="w-10 h-10 rounded-full"
                         />
@@ -283,7 +283,7 @@ export default function Feed() {
                             className="flex items-center space-x-3 flex-1"
                           >
                             <img
-                              src={user.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${user.username}`}
+                              src={user.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
                               alt=""
                               className="w-10 h-10 rounded-full"
                             />

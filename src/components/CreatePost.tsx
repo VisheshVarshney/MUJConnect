@@ -1,16 +1,34 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Image, Shield } from 'lucide-react';
+import { Send, Image, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useDropzone } from 'react-dropzone';
-import Cropper from 'react-easy-crop';
-
-interface Point { x: number; y: number }
-interface Area { x: number; y: number; width: number; height: number }
+import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface CreatePostProps {
   disabled?: boolean;
+}
+
+function centerAspectCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect: number,
+) {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 90,
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight,
+    ),
+    mediaWidth,
+    mediaHeight,
+  );
 }
 
 export default function CreatePost({ disabled = false }: CreatePostProps) {
@@ -21,9 +39,9 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [showCropper, setShowCropper] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
-  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreas, setCroppedAreas] = useState<Area[]>([]);
+  const [crops, setCrops] = useState<Record<number, Crop>>({});
+  const [completedCrops, setCompletedCrops] = useState<Record<number, PixelCrop>>({});
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const validFiles = acceptedFiles.filter(file => 
@@ -33,115 +51,174 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
     if (validFiles.length > 0) {
       const newFiles = [...mediaFiles];
       const newPreviewUrls = [...previewUrls];
-      const newCroppedAreas = [...croppedAreas];
+      let firstImageIndex = -1;
 
-      validFiles.forEach(file => {
+      validFiles.forEach((file, index) => {
         if (file.type.startsWith('image/')) {
           const reader = new FileReader();
-          reader.onload = () => {
-            newFiles.push(file);
-            newPreviewUrls.push(reader.result as string);
-            newCroppedAreas.push({ x: 0, y: 0, width: 0, height: 0 });
-            
-            if (file === validFiles[0]) {
-              setCurrentFileIndex(mediaFiles.length);
+          reader.onloadend = () => {
+            const fileIndex = mediaFiles.length + index;
+            if (firstImageIndex === -1) {
+              firstImageIndex = fileIndex;
+              setCurrentFileIndex(fileIndex);
               setShowCropper(true);
             }
+            newFiles.push(file);
+            newPreviewUrls.push(reader.result as string);
+            if (index === validFiles.length - 1) {
+              setMediaFiles(newFiles);
+              setPreviewUrls(newPreviewUrls);
+            }
+          };
+          reader.onerror = () => {
+            toast.error('Error reading file');
           };
           reader.readAsDataURL(file);
         } else {
           newFiles.push(file);
-          newPreviewUrls.push(URL.createObjectURL(file));
-          newCroppedAreas.push({ x: 0, y: 0, width: 0, height: 0 });
+          const url = URL.createObjectURL(file);
+          newPreviewUrls.push(url);
         }
       });
 
-      setMediaFiles(newFiles);
-      setPreviewUrls(newPreviewUrls);
-      setCroppedAreas(newCroppedAreas);
+      if (!validFiles.some(file => file.type.startsWith('image/'))) {
+        setMediaFiles(newFiles);
+        setPreviewUrls(newPreviewUrls);
+      }
     }
-  }, [mediaFiles, previewUrls, croppedAreas]);
+  }, [mediaFiles, previewUrls]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
       'image/*': [],
       'video/*': []
     },
-    maxSize: 10485760,
+    maxSize: 10485760, // 10MB
   });
 
-  const createImage = (url: string): Promise<HTMLImageElement> =>
-    new Promise((resolve, reject) => {
-      const image = new Image();
-      image.addEventListener('load', () => resolve(image));
-      image.addEventListener('error', error => reject(error));
-      image.src = url;
-    });
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const crop = centerAspectCrop(width, height, 1);
+    setCrops(prev => ({ ...prev, [currentFileIndex]: crop }));
+  };
 
-  const getCroppedImg = async (
-    imageSrc: string,
-    pixelCrop: Area
-  ): Promise<Blob> => {
-    const image = await createImage(imageSrc);
+  const getCroppedImg = useCallback(async (
+    image: HTMLImageElement,
+    crop: PixelCrop,
+    fileName: string
+  ): Promise<File> => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      throw new Error('No 2d context');
+      throw new Error('No 2D context');
     }
 
-    canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
 
     ctx.drawImage(
       image,
-      pixelCrop.x,
-      pixelCrop.y,
-      pixelCrop.width,
-      pixelCrop.height,
+      crop.x,
+      crop.y,
+      crop.width,
+      crop.height,
       0,
       0,
-      pixelCrop.width,
-      pixelCrop.height
+      crop.width,
+      crop.height
     );
 
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
         if (!blob) {
-          throw new Error('Canvas is empty');
+          reject(new Error('Canvas is empty'));
+          return;
         }
-        resolve(blob);
+        const file = new File([blob], fileName, { type: 'image/jpeg' });
+        resolve(file);
       }, 'image/jpeg');
     });
+  }, []);
+
+  const handleCropComplete = useCallback(async () => {
+    try {
+      if (!imgRef.current || !completedCrops[currentFileIndex]) {
+        throw new Error('Crop not complete');
+      }
+
+      const croppedFile = await getCroppedImg(
+        imgRef.current,
+        completedCrops[currentFileIndex],
+        mediaFiles[currentFileIndex].name
+      );
+
+      const newMediaFiles = [...mediaFiles];
+      newMediaFiles[currentFileIndex] = croppedFile;
+      setMediaFiles(newMediaFiles);
+
+      // Update preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newPreviewUrls = [...previewUrls];
+        newPreviewUrls[currentFileIndex] = reader.result as string;
+        setPreviewUrls(newPreviewUrls);
+      };
+      reader.readAsDataURL(croppedFile);
+
+      // Find next image to crop
+      const nextImageIndex = findNextImageIndex(currentFileIndex);
+      if (nextImageIndex !== -1) {
+        setCurrentFileIndex(nextImageIndex);
+      } else {
+        setShowCropper(false);
+      }
+
+      toast.success('Image cropped successfully');
+    } catch (error) {
+      console.error('Error completing crop:', error);
+      toast.error('Failed to crop image');
+    }
+  }, [completedCrops, currentFileIndex, getCroppedImg, mediaFiles, previewUrls]);
+
+  const findNextImageIndex = (currentIndex: number): number => {
+    for (let i = currentIndex + 1; i < mediaFiles.length; i++) {
+      if (mediaFiles[i].type.startsWith('image/')) {
+        return i;
+      }
+    }
+    return -1;
   };
 
-  const onCropComplete = useCallback(async (croppedArea: Area, croppedAreaPixels: Area) => {
-    try {
-      const newCroppedAreas = [...croppedAreas];
-      newCroppedAreas[currentFileIndex] = croppedAreaPixels;
-      setCroppedAreas(newCroppedAreas);
-
-      if (mediaFiles[currentFileIndex].type.startsWith('image/')) {
-        const croppedImage = await getCroppedImg(previewUrls[currentFileIndex], croppedAreaPixels);
-        const newMediaFiles = [...mediaFiles];
-        newMediaFiles[currentFileIndex] = new File([croppedImage], mediaFiles[currentFileIndex].name, {
-          type: 'image/jpeg'
-        });
-        setMediaFiles(newMediaFiles);
+  const findPrevImageIndex = (currentIndex: number): number => {
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (mediaFiles[i].type.startsWith('image/')) {
+        return i;
       }
-    } catch (error) {
-      console.error('Error cropping image:', error);
     }
-  }, [croppedAreas, currentFileIndex, mediaFiles, previewUrls]);
+    return -1;
+  };
 
   const removeFile = (index: number) => {
     setMediaFiles(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => {
-      URL.revokeObjectURL(prev[index]);
+      const url = prev[index];
+      if (url && !url.startsWith('data:')) {
+        URL.revokeObjectURL(url);
+      }
       return prev.filter((_, i) => i !== index);
     });
-    setCroppedAreas(prev => prev.filter((_, i) => i !== index));
+    setCrops(prev => {
+      const newCrops = { ...prev };
+      delete newCrops[index];
+      return newCrops;
+    });
+    setCompletedCrops(prev => {
+      const newCompletedCrops = { ...prev };
+      delete newCompletedCrops[index];
+      return newCompletedCrops;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,24 +243,20 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
       if (postError) throw postError;
 
       if (mediaFiles.length > 0) {
-        for (let i = 0; i < mediaFiles.length; i++) {
-          const file = mediaFiles[i];
+        for (const file of mediaFiles) {
           const fileExt = file.name.split('.').pop();
           const fileName = `${user.id}/${post.id}/${Math.random()}.${fileExt}`;
-          const filePath = `${fileName}`;
 
           const { error: uploadError } = await supabase.storage
             .from('post-media')
-            .upload(filePath, file);
+            .upload(fileName, file);
 
           if (uploadError) throw uploadError;
 
           await supabase.from('media_files').insert({
             post_id: post.id,
-            file_path: filePath,
-            file_type: file.type.startsWith('image/') ? 'image' : 'video',
-            width: croppedAreas[i]?.width || null,
-            height: croppedAreas[i]?.height || null
+            file_path: fileName,
+            file_type: file.type.startsWith('image/') ? 'image' : 'video'
           });
         }
       }
@@ -192,7 +265,8 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
       setIsAnonymous(false);
       setMediaFiles([]);
       setPreviewUrls([]);
-      setCroppedAreas([]);
+      setCrops({});
+      setCompletedCrops({});
       toast.success('Post created successfully!');
       
       window.location.reload();
@@ -291,34 +365,69 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
       {showCropper && mediaFiles[currentFileIndex]?.type.startsWith('image/') && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-amoled rounded-lg w-full max-w-xl animate-scale-in">
-            <div className="relative h-80">
-              <Cropper
-                image={previewUrls[currentFileIndex]}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-              />
+            <div className="p-4 border-b dark:border-gray-700">
+              <h3 className="text-lg font-semibold dark:text-white">
+                Crop Image {currentFileIndex + 1} of {mediaFiles.filter(f => f.type.startsWith('image/')).length}
+              </h3>
             </div>
-            <div className="p-4 flex justify-between">
-              <button
-                type="button"
-                onClick={() => setShowCropper(false)}
-                className="px-4 py-2 bg-gray-200 dark:bg-amoled-light text-gray-700 dark:text-gray-300 rounded-lg"
+            <div className="relative h-[60vh] md:h-[70vh]">
+              <ReactCrop
+                crop={crops[currentFileIndex]}
+                onChange={(_, percentCrop) => setCrops(prev => ({ ...prev, [currentFileIndex]: percentCrop }))}
+                onComplete={(c) => setCompletedCrops(prev => ({ ...prev, [currentFileIndex]: c }))}
+                aspect={1}
+                className="h-full"
               >
-                Done
-              </button>
-              {currentFileIndex < mediaFiles.length - 1 && (
+                <img
+                  ref={imgRef}
+                  alt="Crop me"
+                  src={previewUrls[currentFileIndex]}
+                  onLoad={onImageLoad}
+                  className="h-full max-w-full mx-auto"
+                />
+              </ReactCrop>
+            </div>
+            <div className="p-4 flex items-center justify-between border-t dark:border-gray-700">
+              <div className="flex space-x-2">
                 <button
                   type="button"
-                  onClick={() => setCurrentFileIndex(prev => prev + 1)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+                  onClick={() => {
+                    const prevIndex = findPrevImageIndex(currentFileIndex);
+                    if (prevIndex !== -1) setCurrentFileIndex(prevIndex);
+                  }}
+                  disabled={findPrevImageIndex(currentFileIndex) === -1}
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next Image
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextIndex = findNextImageIndex(currentFileIndex);
+                    if (nextIndex !== -1) setCurrentFileIndex(nextIndex);
+                  }}
+                  disabled={findNextImageIndex(currentFileIndex) === -1}
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCropper(false)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCropComplete}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Apply Crop
+                </button>
+              </div>
             </div>
           </div>
         </div>
