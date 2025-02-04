@@ -5,6 +5,8 @@
 html {
   scroll-behavior: smooth;
   scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  height: 100%;
 }
 
 section {
@@ -12,7 +14,16 @@ section {
   scroll-snap-stop: always;
 }
 
-/* Custom scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Custom scrollbar - will not apply to elements with no-scrollbar class */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -152,6 +163,39 @@ a, button {
   100% { transform: translate(100%, 0%); opacity: 0; }
 }
 
+/* Parallax text styles */
+.parallax {
+  overflow: hidden;
+  letter-spacing: -2px;
+  line-height: 1.2;
+  margin: 0;
+  white-space: nowrap;
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.scroller {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 64px;
+  display: flex;
+  white-space: nowrap;
+  display: flex;
+  flex-wrap: nowrap;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.scroller span {
+  display: block;
+  margin-right: 30px;
+}
+
+@media (max-width: 768px) {
+  .scroller {
+    font-size: 32px;
+  }
+}
+
 .animate-fade-in { animation: fadeIn 0.5s ease-out; }
 .animate-slide-up { animation: slideUp 0.5s ease-out; }
 .animate-scale-in { animation: scaleIn 0.3s ease-out; }
@@ -161,3 +205,61 @@ a, button {
 .animate-bounce-soft { animation: bounceSoft 2s infinite; }
 .animate-star-movement-bottom { animation: star-movement-bottom linear infinite alternate; }
 .animate-star-movement-top { animation: star-movement-top linear infinite alternate; }
+
+/* Add new styles for Feed v2 */
+.post-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.post-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms ease-in, transform 300ms ease-out;
+}
+
+.post-exit {
+  opacity: 1;
+}
+
+.post-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 300ms ease-in, transform 300ms ease-out;
+}
+
+/* Mantine core styles */
+@import '@mantine/core/styles.css';
+
+/* Feed v2 specific styles */
+.feed-v2-container {
+  @apply max-w-7xl mx-auto px-4;
+}
+
+.feed-v2-grid {
+  @apply grid grid-cols-12 gap-6;
+}
+
+.feed-v2-main {
+  @apply col-span-12 lg:col-span-8;
+}
+
+.feed-v2-sidebar {
+  @apply hidden lg:block col-span-4;
+}
+
+.feed-v2-card {
+  @apply bg-white dark:bg-amoled rounded-xl shadow-md hover:shadow-lg transition-all duration-300;
+}
+
+.feed-v2-button {
+  @apply px-4 py-2 rounded-lg transition-colors duration-200;
+}
+
+.feed-v2-button-primary {
+  @apply bg-blue-500 text-white hover:bg-blue-600;
+}
+
+.feed-v2-button-secondary {
+  @apply bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700;
+}

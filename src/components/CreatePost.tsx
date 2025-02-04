@@ -9,6 +9,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 
 interface CreatePostProps {
   disabled?: boolean;
+  onPostCreated?: (post: any) => void;
 }
 
 function centerAspectCrop(
@@ -31,7 +32,7 @@ function centerAspectCrop(
   );
 }
 
-export default function CreatePost({ disabled = false }: CreatePostProps) {
+export default function CreatePost({ disabled = false, onPostCreated }: CreatePostProps) {
   const [content, setContent] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +43,7 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
   const [crops, setCrops] = useState<Record<number, Crop>>({});
   const [completedCrops, setCompletedCrops] = useState<Record<number, PixelCrop>>({});
   const imgRef = useRef<HTMLImageElement>(null);
+  const [scale, setScale] = useState(1);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const validFiles = acceptedFiles.filter(file => 
@@ -101,12 +103,13 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
     const { width, height } = e.currentTarget;
     const crop = centerAspectCrop(width, height, 1);
     setCrops(prev => ({ ...prev, [currentFileIndex]: crop }));
+    setScale(1);
   };
 
   const getCroppedImg = useCallback(async (
     image: HTMLImageElement,
     crop: PixelCrop,
-    fileName: string
+    scale: number = 1
   ): Promise<File> => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -115,15 +118,18 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
       throw new Error('No 2D context');
     }
 
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
     canvas.width = crop.width;
     canvas.height = crop.height;
 
     ctx.drawImage(
       image,
-      crop.x,
-      crop.y,
-      crop.width,
-      crop.height,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
       0,
       0,
       crop.width,
@@ -136,11 +142,11 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
           reject(new Error('Canvas is empty'));
           return;
         }
-        const file = new File([blob], fileName, { type: 'image/jpeg' });
+        const file = new File([blob], mediaFiles[currentFileIndex].name, { type: 'image/jpeg' });
         resolve(file);
-      }, 'image/jpeg');
+      }, 'image/jpeg', 0.9);
     });
-  }, []);
+  }, [mediaFiles, currentFileIndex]);
 
   const handleCropComplete = useCallback(async () => {
     try {
@@ -151,7 +157,7 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
       const croppedFile = await getCroppedImg(
         imgRef.current,
         completedCrops[currentFileIndex],
-        mediaFiles[currentFileIndex].name
+        scale
       );
 
       const newMediaFiles = [...mediaFiles];
@@ -180,7 +186,7 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
       console.error('Error completing crop:', error);
       toast.error('Failed to crop image');
     }
-  }, [completedCrops, currentFileIndex, getCroppedImg, mediaFiles, previewUrls]);
+  }, [completedCrops, currentFileIndex, getCroppedImg, mediaFiles, previewUrls, scale]);
 
   const findNextImageIndex = (currentIndex: number): number => {
     for (let i = currentIndex + 1; i < mediaFiles.length; i++) {
@@ -269,7 +275,9 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
       setCompletedCrops({});
       toast.success('Post created successfully!');
       
-      window.location.reload();
+      if (onPostCreated) {
+        onPostCreated(post);
+      }
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -364,69 +372,89 @@ export default function CreatePost({ disabled = false }: CreatePostProps) {
 
       {showCropper && mediaFiles[currentFileIndex]?.type.startsWith('image/') && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-amoled rounded-lg w-full max-w-xl animate-scale-in">
+          <div className="bg-white dark:bg-amoled rounded-lg w-full max-w-xl max-h-[90vh] flex flex-col animate-scale-in">
             <div className="p-4 border-b dark:border-gray-700">
               <h3 className="text-lg font-semibold dark:text-white">
                 Crop Image {currentFileIndex + 1} of {mediaFiles.filter(f => f.type.startsWith('image/')).length}
               </h3>
             </div>
-            <div className="relative h-[60vh] md:h-[70vh]">
+            
+            <div className="flex-1 min-h-0 relative overflow-hidden">
               <ReactCrop
                 crop={crops[currentFileIndex]}
                 onChange={(_, percentCrop) => setCrops(prev => ({ ...prev, [currentFileIndex]: percentCrop }))}
                 onComplete={(c) => setCompletedCrops(prev => ({ ...prev, [currentFileIndex]: c }))}
                 aspect={1}
-                className="h-full"
+                className="h-full flex items-center justify-center"
               >
                 <img
                   ref={imgRef}
                   alt="Crop me"
                   src={previewUrls[currentFileIndex]}
                   onLoad={onImageLoad}
-                  className="h-full max-w-full mx-auto"
+                  className="max-h-full max-w-full object-contain"
+                  style={{ transform: `scale(${scale})` }}
                 />
               </ReactCrop>
             </div>
-            <div className="p-4 flex items-center justify-between border-t dark:border-gray-700">
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const prevIndex = findPrevImageIndex(currentFileIndex);
-                    if (prevIndex !== -1) setCurrentFileIndex(prevIndex);
-                  }}
-                  disabled={findPrevImageIndex(currentFileIndex) === -1}
-                  className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextIndex = findNextImageIndex(currentFileIndex);
-                    if (nextIndex !== -1) setCurrentFileIndex(nextIndex);
-                  }}
-                  disabled={findNextImageIndex(currentFileIndex) === -1}
-                  className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+
+            <div className="p-4 border-t dark:border-gray-700">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Zoom: {Math.round(scale * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="3"
+                  step="0.1"
+                  value={scale}
+                  onChange={(e) => setScale(parseFloat(e.target.value))}
+                  className="w-full"
+                />
               </div>
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCropper(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCropComplete}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  Apply Crop
-                </button>
+
+              <div className="flex items-center justify-between">
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prevIndex = findPrevImageIndex(currentFileIndex);
+                      if (prevIndex !== -1) setCurrentFileIndex(prevIndex);
+                    }}
+                    disabled={findPrevImageIndex(currentFileIndex) === -1}
+                    className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextIndex = findNextImageIndex(currentFileIndex);
+                      if (nextIndex !== -1) setCurrentFileIndex(nextIndex);
+                    }}
+                    disabled={findNextImageIndex(currentFileIndex) === -1}
+                    className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCropper(false)}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCropComplete}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  >
+                    Apply Crop
+                  </button>
+                </div>
               </div>
             </div>
           </div>

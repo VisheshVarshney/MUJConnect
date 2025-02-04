@@ -150,6 +150,38 @@ export default function Feed() {
     fetchPosts();
   };
 
+  const handlePostCreated = async (newPost: any) => {
+    const { data: post } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        profiles (*),
+        likes (*),
+        media_files (*)
+      `)
+      .eq('id', newPost.id)
+      .single();
+
+    if (post) {
+      if (post.media_files) {
+        const mediaWithUrls = await Promise.all(post.media_files.map(async (file: any) => {
+          try {
+            const { data: { publicUrl } } = supabase.storage
+              .from('post-media')
+              .getPublicUrl(file.file_path);
+            return { ...file, url: publicUrl };
+          } catch (error) {
+            console.error('Error getting media URL:', error);
+            return null;
+          }
+        }));
+        post.media_files = mediaWithUrls.filter(Boolean);
+      }
+
+      setPosts(prevPosts => [post, ...prevPosts]);
+    }
+  };
+
   const restaurants = [
     {
       id: 1,
@@ -201,7 +233,7 @@ export default function Feed() {
               <CreatePost disabled={true} />
             </div>
           ) : (
-            <CreatePost />
+            <CreatePost onPostCreated={handlePostCreated} />
           )}
           
           {error && (
@@ -236,81 +268,83 @@ export default function Feed() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="hidden lg:block col-span-4 space-y-6">
-          {/* Following Section */}
-          <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6 sticky top-20">
-            <h2 className="text-lg font-semibold mb-4 dark:text-white flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Following
-            </h2>
-            <div className="space-y-4 hide-scrollbar overflow-y-auto max-h-[calc(100vh-20rem)]">
-              {isLoading ? (
-                <FollowingSkeleton />
-              ) : (
-                <>
-                  {following.map((follow) => (
-                    <Link
-                      key={follow.following_id}
-                      to={`/profile/${follow.following_id}`}
-                      className="block p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-amoled-light transition-colors animate-fade-in"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={follow.profiles.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
-                          alt=""
-                          className="w-10 h-10 rounded-full"
-                        />
-                        <div>
-                          <div className="font-medium dark:text-white">{follow.profiles.full_name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">@{follow.profiles.username}</div>
+        <div className="hidden lg:block col-span-4">
+          <div className="sticky top-20 space-y-6 max-h-[calc(100vh-5rem)] overflow-y-auto hide-scrollbar">
+            {/* Following Section */}
+            <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6">
+              <h2 className="text-lg font-semibold mb-4 dark:text-white flex items-center">
+                <Users className="w-5 h-5 mr-2" />
+                Following
+              </h2>
+              <div className="space-y-4 hide-scrollbar overflow-y-auto max-h-[calc(100vh-20rem)]">
+                {isLoading ? (
+                  <FollowingSkeleton />
+                ) : (
+                  <>
+                    {following.map((follow) => (
+                      <Link
+                        key={follow.following_id}
+                        to={`/profile/${follow.following_id}`}
+                        className="block p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-amoled-light transition-colors animate-fade-in"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={follow.profiles.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
+                            alt=""
+                            className="w-10 h-10 rounded-full"
+                          />
+                          <div>
+                            <div className="font-medium dark:text-white">{follow.profiles.full_name}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">@{follow.profiles.username}</div>
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    ))}
 
-                  {following.length < 5 && suggestedUsers.length > 0 && (
-                    <>
-                      <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-6 mb-4">
-                        Suggested Users
-                      </div>
-                      {suggestedUsers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-amoled-light transition-colors animate-fade-in"
-                        >
-                          <Link
-                            to={`/profile/${user.id}`}
-                            className="flex items-center space-x-3 flex-1"
-                          >
-                            <img
-                              src={user.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
-                              alt=""
-                              className="w-10 h-10 rounded-full"
-                            />
-                            <div>
-                              <div className="font-medium dark:text-white">{user.full_name}</div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">@{user.username}</div>
-                            </div>
-                          </Link>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleFollow(user.id);
-                            }}
-                            className="px-3 py-1 text-sm bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-                          >
-                            Follow
-                          </button>
+                    {following.length < 5 && suggestedUsers.length > 0 && (
+                      <>
+                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-6 mb-4">
+                          Suggested Users
                         </div>
-                      ))}
-                    </>
-                  )}
-                </>
-              )}
+                        {suggestedUsers.map((user) => (
+                          <div
+                            key={user.id}
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-amoled-light transition-colors animate-fade-in"
+                          >
+                            <Link
+                              to={`/profile/${user.id}`}
+                              className="flex items-center space-x-3 flex-1"
+                            >
+                              <img
+                                src={user.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
+                                alt=""
+                                className="w-10 h-10 rounded-full"
+                              />
+                              <div>
+                                <div className="font-medium dark:text-white">{user.full_name}</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">@{user.username}</div>
+                              </div>
+                            </Link>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleFollow(user.id);
+                              }}
+                              className="px-3 py-1 text-sm bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                            >
+                              Follow
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
             {/* MUJ Menus Section */}
-            <div className="mt-8">
+            <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6">
               <h2 className="text-lg font-semibold mb-4 dark:text-white flex items-center">
                 <Utensils className="w-5 h-5 mr-2" />
                 MUJ Menus

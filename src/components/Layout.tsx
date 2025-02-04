@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, User, Bell, LogOut, Search, MessageCircle, Moon, 
-  Sun, Shield, Utensils, Menu, X 
+  Sun, Shield, Utensils, Menu, X, Send 
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +20,9 @@ export default function Layout() {
   const { isDark, toggleDark } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [messages, setMessages] = useState<Array<{ type: 'user' | 'bot', content: string }>>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const isFeedPage = location.pathname === '/feed';
 
@@ -27,6 +30,10 @@ export default function Layout() {
     fetchNotifications();
     fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const fetchCurrentUser = async () => {
     try {
@@ -80,8 +87,37 @@ export default function Layout() {
     }
   };
 
+  const sendMessage = async () => {
+    if (!message.trim()) return;
+
+    const userMessage = message.trim();
+    setMessage('');
+    setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
+    setIsTyping(true);
+
+    try {
+      const response = await fetch('https://visheshvarshney.pythonanywhere.com/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      if (!response.ok) throw new Error('Failed to get response');
+
+      const data = await response.json();
+      setMessages(prev => [...prev, { type: 'bot', content: data.reply }]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast.error('Failed to get response from chatbot');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-amoled transition-colors duration-300">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-amoled transition-colors duration-300">
       {/* Top Navigation */}
       <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-amoled shadow-sm z-50 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4">
@@ -328,26 +364,59 @@ export default function Layout() {
                 </button>
               </div>
               
-              <div className="space-y-4">
-                <div className="bg-gray-50 dark:bg-amoled-light rounded-lg p-3 animate-fade-in">
-                  <p className="text-sm dark:text-white">How can I help you today?</p>
-                </div>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 px-3 py-2 border dark:border-gray-600 dark:bg-amoled-light dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={() => setMessage('')}
-                    className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              <div className="h-[300px] overflow-y-auto mb-4 space-y-4">
+                {messages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <MessageCircle className="w-5 h-5" />
-                  </button>
-                </div>
+                    <div
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        msg.type === 'user'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 dark:bg-amoled-light dark:text-white'
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 dark:bg-amoled-light p-3 rounded-lg dark:text-white">
+                      <div className="flex space-x-2">
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100" />
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
               </div>
+
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sendMessage();
+                }}
+                className="flex space-x-2"
+              >
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1 px-3 py-2 border dark:border-gray-600 dark:bg-amoled-light dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!message.trim() || isTyping}
+                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </form>
             </div>
           </motion.div>
         )}

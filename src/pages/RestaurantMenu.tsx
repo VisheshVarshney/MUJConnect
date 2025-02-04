@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import TiltedCard from '../components/TiltedCard';
+import { Phone, MapPin, Clock, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const restaurants = {
   1: {
@@ -51,6 +50,7 @@ export default function RestaurantMenu() {
   const { id } = useParams();
   const [showContacts, setShowContacts] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showFullMenu, setShowFullMenu] = useState(false);
   const restaurant = restaurants[Number(id)];
 
   if (!restaurant) {
@@ -78,27 +78,19 @@ export default function RestaurantMenu() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="bg-white dark:bg-amoled rounded-xl shadow-lg overflow-hidden">
-        <div className="relative h-96">
-          <TiltedCard
-            imageSrc={restaurant.image}
-            altText={restaurant.name}
-            containerHeight="384px"
-            containerWidth="100%"
-            imageHeight="384px"
-            imageWidth="100%"
-            scaleOnHover={1.05}
-            rotateAmplitude={8}
-            showMobileWarning={false}
-            showTooltip={false}
-            displayOverlayContent={true}
-            overlayContent={
-              <div className="absolute inset-0 flex items-end p-8 bg-gradient-to-t from-black/60 to-transparent">
-                <h1 className="text-4xl font-bold text-white">
-                  {restaurant.name}
-                </h1>
-              </div>
-            }
+        <div className="relative h-48 sm:h-96">
+          <img
+            src={restaurant.image}
+            alt={restaurant.name}
+            className="w-full h-full object-cover"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 p-8">
+              <h1 className="text-4xl font-bold text-white">
+                {restaurant.name}
+              </h1>
+            </div>
+          </div>
         </div>
 
         <div className="p-6">
@@ -129,11 +121,12 @@ export default function RestaurantMenu() {
                     exit={{ opacity: 0, x: -100 }}
                     transition={{ duration: 0.3 }}
                     className="aspect-[4/3] relative"
+                    onClick={() => setShowFullMenu(true)}
                   >
                     <img
                       src={restaurant.menus[currentSlide].image}
                       alt={`Menu ${currentSlide + 1}`}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain cursor-pointer"
                     />
                   </motion.div>
                 </AnimatePresence>
@@ -214,6 +207,44 @@ export default function RestaurantMenu() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Full-screen menu viewer */}
+      <AnimatePresence>
+        {showFullMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          >
+            <button
+              onClick={() => setShowFullMenu(false)}
+              className="absolute top-4 right-4 p-2 text-white hover:text-gray-300"
+            >
+              <X className="w-8 h-8" />
+            </button>
+            <img
+              src={restaurant.menus[currentSlide].image}
+              alt={`Menu ${currentSlide + 1}`}
+              className="max-w-full max-h-[90vh] object-contain"
+            />
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
+              <button
+                onClick={prevSlide}
+                className="p-2 bg-white/10 text-white rounded-full hover:bg-white/20"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="p-2 bg-white/10 text-white rounded-full hover:bg-white/20"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
