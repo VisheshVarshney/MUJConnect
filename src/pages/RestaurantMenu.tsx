@@ -1,214 +1,237 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, MapPin, Clock, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
-const restaurants = {
-  1: {
-    name: 'Dialog Cafe',
-    image: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    description: 'Your favorite pizza cafe!',
-    location: 'B1 - GHS',
-    timings: '10:00 AM - 4:00 AM',
-    contact: ['0123456789', '9876543210'],
-    menus: [
-      { id: 1, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/Dialog1.jpg' },
-      { id: 2, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/Dialog2.jpg' },
-      { id: 3, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/Dialog3.jpg' },
-    ],
-  },
-  2: {
-    name: 'Zaika',
-    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    description: 'Flavor-packed, budget-friendly veg and non-veg heaven.',
-    location: 'B1 - GHS',
-    timings: '10:00 AM - 4:00 AM',
-    contact: ['0123456789', '9876543210'],
-    menus: [
-      { id: 1, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/zaika1.jpg' },
-      { id: 2, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/zaika2.jpg' },
-      { id: 3, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/zaika3.jpg' },
-      { id: 4, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/zaika4.jpg' },
-    ],
-  },
-  3: {
-    name: 'Chatkara',
-    image: 'https://images.unsplash.com/photo-1589734435753-747b0aa53b78?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    description: 'The ultimate stop for smoky, spicy, and satisfying eats.',
-    location: 'B1 - GHS',
-    timings: '10:00 AM - 4:00 AM',
-    contact: ['0123456789', '9876543210'],
-    menus: [
-      { id: 1, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/chatkara1.jpg' },
-      { id: 2, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/chatkara2.jpg' },
-      { id: 3, image: 'https://res.cloudinary.com/dcvmvxbyf/image/upload/v1737738362/chatkara3.jpg' },
-    ],
-  },
-};
+interface Restaurant {
+  id: string;
+  name: string;
+  opening_hours: string;
+  location: string;
+  banner_image: string;
+  logo_image: string;
+  contact_numbers: { phone_number: string }[];
+  menu_items: MenuItem[];
+  menu_images: { url: string }[];
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  availability: boolean;
+}
 
 export default function RestaurantMenu() {
   const { id } = useParams();
-  const [showContacts, setShowContacts] = useState(false);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showFullMenu, setShowFullMenu] = useState(false);
-  const restaurant = restaurants[Number(id)];
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!restaurant) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold dark:text-white">
-          Restaurant not found
-        </h1>
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchRestaurantData();
+  }, [id]);
+
+  const fetchRestaurantData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data: restaurant, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select(`
+          *,
+          contact_numbers (phone_number),
+          menu_items (*),
+          menu_images (url)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (restaurantError) throw restaurantError;
+      if (!restaurant) throw new Error('Restaurant not found');
+
+      setRestaurant(restaurant);
+    } catch (error: any) {
+      console.error('Error fetching restaurant:', error);
+      setError(error.message);
+      toast.error('Error loading restaurant data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const nextSlide = () => {
+    if (!restaurant?.menu_images) return;
     setCurrentSlide((prev) => 
-      prev === restaurant.menus.length - 1 ? 0 : prev + 1
+      prev === restaurant.menu_images.length - 1 ? 0 : prev + 1
     );
   };
 
   const prevSlide = () => {
+    if (!restaurant?.menu_images) return;
     setCurrentSlide((prev) => 
-      prev === 0 ? restaurant.menus.length - 1 : prev - 1
+      prev === 0 ? restaurant.menu_images.length - 1 : prev - 1
     );
   };
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="bg-white dark:bg-amoled rounded-xl shadow-lg overflow-hidden">
-        <div className="relative h-48 sm:h-96">
-          <img
-            src={restaurant.image}
-            alt={restaurant.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent">
-            <div className="absolute bottom-0 left-0 right-0 p-8">
-              <h1 className="text-4xl font-bold text-white">
-                {restaurant.name}
-              </h1>
-            </div>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-amoled flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error || !restaurant) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-amoled">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="bg-white dark:bg-amoled-light rounded-xl shadow-lg p-8 text-center">
+            <h1 className="text-2xl font-bold dark:text-white mb-4">
+              {error || 'Restaurant not found'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Please try again later or contact support if the problem persists.
+            </p>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="p-6">
-          <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
-            {restaurant.description}
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="flex items-center text-gray-600 dark:text-gray-300">
-              <MapPin className="w-5 h-5 mr-2" />
-              {restaurant.location}
-            </div>
-            <div className="flex items-center text-gray-600 dark:text-gray-300">
-              <Clock className="w-5 h-5 mr-2" />
-              {restaurant.timings}
-            </div>
-          </div>
-
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4 dark:text-white">Menu</h2>
-            <div className="relative">
-              <div className="overflow-hidden rounded-lg">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentSlide}
-                    initial={{ opacity: 0, x: 100 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    transition={{ duration: 0.3 }}
-                    className="aspect-[4/3] relative"
-                    onClick={() => setShowFullMenu(true)}
-                  >
-                    <img
-                      src={restaurant.menus[currentSlide].image}
-                      alt={`Menu ${currentSlide + 1}`}
-                      className="w-full h-full object-contain cursor-pointer"
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              <button
-                onClick={prevSlide}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/75 transition-colors"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/75 transition-colors"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {restaurant.menus.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentSlide(index)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                      currentSlide === index
-                        ? 'bg-white w-4'
-                        : 'bg-white/50'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-center">
-            <motion.button
-              onClick={() => setShowContacts(!showContacts)}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              animate={showContacts ? { backgroundColor: '#EF4444' } : {}}
-            >
-              <Phone className="w-5 h-5" />
-              <span>Contact</span>
-            </motion.button>
-          </div>
-
-          <AnimatePresence>
-            {showContacts && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-4 overflow-hidden"
-              >
-                <div className="p-4 bg-gray-50 dark:bg-amoled-light rounded-lg">
-                  <h3 className="font-semibold mb-2 dark:text-white">
-                    Contact Numbers:
-                  </h3>
-                  <div className="space-y-2">
-                    {restaurant.contact.map((number, index) => (
-                      <motion.a
-                        key={index}
-                        href={`tel:${number}`}
-                        className="block text-blue-500 hover:text-blue-600"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                      >
-                        {number}
-                      </motion.a>
-                    ))}
-                  </div>
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-amoled">
+      {/* Hero Section */}
+      <div className="relative h-[400px]">
+        <img
+          src={restaurant.banner_image}
+          alt={restaurant.name}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent">
+          <div className="absolute bottom-0 left-0 right-0 p-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center space-x-4 mb-4">
+                <img
+                  src={restaurant.logo_image}
+                  alt=""
+                  className="w-20 h-20 rounded-full border-4 border-white"
+                />
+                <div>
+                  <h1 className="text-4xl font-bold text-white mb-2">
+                    {restaurant.name}
+                  </h1>
+                  <p className="text-white/90">{restaurant.location}</p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Full-screen menu viewer */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <motion.div
+            whileHover={{ y: -5 }}
+            className="bg-white dark:bg-amoled-light p-6 rounded-xl shadow-lg"
+          >
+            <MapPin className="w-6 h-6 text-blue-500 mb-2" />
+            <h3 className="font-semibold dark:text-white">Location</h3>
+            <p className="text-gray-600 dark:text-gray-400">{restaurant.location}</p>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ y: -5 }}
+            className="bg-white dark:bg-amoled-light p-6 rounded-xl shadow-lg"
+          >
+            <Clock className="w-6 h-6 text-green-500 mb-2" />
+            <h3 className="font-semibold dark:text-white">Hours</h3>
+            <p className="text-gray-600 dark:text-gray-400">{restaurant.opening_hours}</p>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ y: -5 }}
+            className="bg-white dark:bg-amoled-light p-6 rounded-xl shadow-lg"
+          >
+            <Phone className="w-6 h-6 text-red-500 mb-2" />
+            <h3 className="font-semibold dark:text-white">Contact</h3>
+            {restaurant.contact_numbers.map((contact, index) => (
+              <a
+                key={index}
+                href={`tel:${contact.phone_number}`}
+                className="block text-blue-500 hover:text-blue-600"
+              >
+                {contact.phone_number}
+              </a>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Menu Image Carousel */}
+        {restaurant.menu_images && restaurant.menu_images.length > 0 && (
+          <div className="mb-8">
+            <div className="bg-white dark:bg-amoled-light rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold mb-6 dark:text-white">Menu Images</h2>
+              
+              <div className="relative">
+                <div className="aspect-[16/9] overflow-hidden rounded-lg">
+                  <img
+                    src={restaurant.menu_images[currentSlide].url}
+                    alt={`Menu ${currentSlide + 1}`}
+                    className="w-full h-full object-contain cursor-pointer"
+                    onClick={() => setShowFullMenu(true)}
+                  />
+                </div>
+
+                {restaurant.menu_images.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevSlide}
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/75 transition-colors"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={nextSlide}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/75 transition-colors"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                  </>
+                )}
+
+                {/* Thumbnail Navigation */}
+                <div className="flex justify-center mt-4 space-x-2">
+                  {restaurant.menu_images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentSlide(index)}
+                      className={`w-3 h-3 rounded-full transition-colors ${
+                        currentSlide === index
+                          ? 'bg-blue-500'
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Menu Items Section */}
+        
+      </div>
+
+      {/* Full-screen Menu Image Viewer */}
       <AnimatePresence>
         {showFullMenu && (
           <motion.div
@@ -223,24 +246,45 @@ export default function RestaurantMenu() {
             >
               <X className="w-8 h-8" />
             </button>
-            <img
-              src={restaurant.menus[currentSlide].image}
-              alt={`Menu ${currentSlide + 1}`}
-              className="max-w-full max-h-[90vh] object-contain"
-            />
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
-              <button
-                onClick={prevSlide}
-                className="p-2 bg-white/10 text-white rounded-full hover:bg-white/20"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="p-2 bg-white/10 text-white rounded-full hover:bg-white/20"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
+
+            <div className="relative max-w-6xl w-full">
+              <img
+                src={restaurant.menu_images[currentSlide].url}
+                alt={`Menu ${currentSlide + 1}`}
+                className="w-full h-full object-contain"
+              />
+
+              {restaurant.menu_images.length > 1 && (
+                <>
+                  <button
+                    onClick={prevSlide}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors"
+                  >
+                    <ChevronLeft className="w-8 h-8" />
+                  </button>
+                  <button
+                    onClick={nextSlide}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors"
+                  >
+                    <ChevronRight className="w-8 h-8" />
+                  </button>
+                </>
+              )}
+
+              {/* Thumbnail Navigation */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex justify-center space-x-2">
+                {restaurant.menu_images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentSlide(index)}
+                    className={`w-3 h-3 rounded-full transition-colors ${
+                      currentSlide === index
+                        ? 'bg-white'
+                        : 'bg-white/50 hover:bg-white/75'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
