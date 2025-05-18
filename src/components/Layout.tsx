@@ -1,13 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Home, User, Bell, LogOut, Search, MessageCircle, Moon, 
-  Sun, Shield, Utensils, Menu, X, Send 
-} from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Home,
+  User,
+  Bell,
+  LogOut,
+  Search,
+  MessageCircle,
+  Moon,
+  Sun,
+  Shield,
+  Utensils,
+  Menu,
+  X,
+  Send,
+  Car,
+  ChevronDown,
+  Settings,
+  Hash,
+  TrendingUp as TrendUp
+} from 'lucide-react';
 import { useThemeStore } from '../lib/store';
 import { toast } from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
+import ChatBot from './ChatBot';
+import SearchBar from './SearchBar';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -15,25 +33,30 @@ export default function Layout() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [message, setMessage] = useState('');
-  const [showAIChat, setShowAIChat] = useState(false);
-  const { isDark, toggleDark } = useThemeStore();
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [messages, setMessages] = useState<Array<{ type: 'user' | 'bot', content: string }>>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const { isDark, toggleDark } = useThemeStore();
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const isFeedPage = location.pathname === '/feed';
 
   useEffect(() => {
     fetchNotifications();
     fetchCurrentUser();
-  }, []);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // Handle click outside user menu
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchCurrentUser = async () => {
     try {
@@ -50,8 +73,6 @@ export default function Layout() {
       console.error('Error fetching current user:', error);
     }
   };
-
-  const isAdmin = currentUser?.is_superadmin;
 
   const fetchNotifications = async () => {
     try {
@@ -73,46 +94,10 @@ export default function Layout() {
     try {
       await supabase.auth.signOut();
       navigate('/login');
+      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Error signing out:', error);
       toast.error('Error signing out');
-    }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setSearchQuery('');
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!message.trim()) return;
-
-    const userMessage = message.trim();
-    setMessage('');
-    setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
-    setIsTyping(true);
-
-    try {
-      const response = await fetch('https://visheshvarshney.pythonanywhere.com/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: userMessage }),
-      });
-
-      if (!response.ok) throw new Error('Failed to get response');
-
-      const data = await response.json();
-      setMessages(prev => [...prev, { type: 'bot', content: data.reply }]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      toast.error('Failed to get response from chatbot');
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -122,202 +107,201 @@ export default function Layout() {
       <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-amoled shadow-sm z-50 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               <Link to="/" className="text-2xl font-bold text-blue-500">
                 MUJ Connect
               </Link>
-
-              <form onSubmit={handleSearch} className="hidden md:block">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search..."
-                    className="w-64 pl-10 pr-4 py-2 bg-gray-100 dark:bg-amoled-light border-0 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                  />
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                </div>
-              </form>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="md:hidden p-2 text-gray-600 dark:text-gray-300"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
+            {/* Desktop Search Bar - Hidden on Mobile */}
+            <div className="hidden md:block flex-1 max-w-2xl mx-12">
+              <SearchBar />
+            </div>
+
+            {/* Mobile Top Right Icons */}
+            <div className="flex items-center space-x-3 md:hidden">
+              <button
+                onClick={() => toggleDark()}
+                className="p-2 text-gray-600 dark:text-gray-300"
+              >
+                {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+              </button>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 text-gray-600 dark:text-gray-300 relative"
+              >
+                <Bell className="w-6 h-6" />
+                {notifications.some((n) => !n.is_read) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                )}
+              </button>
+            </div>
+
+            {/* Desktop Right Menu - Hidden on Mobile */}
+            <div className="hidden md:flex items-center">
+              <button
+                onClick={() => toggleDark()}
+                className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all duration-200 hover:scale-105"
+              >
+                {isDark ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Left Sidebar - Modified for animation and retraction */}
-      <motion.div 
+      {/* Left Sidebar - Hidden on Mobile */}
+      <motion.div
         initial={{ width: isFeedPage ? 192 : 64 }}
         animate={{ width: isFeedPage ? 192 : 64 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="fixed left-0 top-16 bottom-0 hidden md:block bg-white dark:bg-amoled shadow-lg z-40 overflow-hidden"
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="fixed left-0 top-16 bottom-0 hidden md:flex flex-col bg-white dark:bg-amoled shadow-lg z-40 overflow-hidden"
       >
-        <div className="flex flex-col py-4 relative">
-          <Link to="/feed" className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
+        <div className="flex-1 py-4">
+          <Link
+            to="/feed"
+            className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}
+          >
             <Home className="icon" />
-            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+            <span
+              className={`text transition-all duration-300 ${
+                !isFeedPage
+                  ? 'opacity-0 group-hover:opacity-100 absolute left-16'
+                  : 'opacity-100'
+              }`}
+            >
               Home
             </span>
           </Link>
-          
-          <Link to="/profile/me" className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
-            <User className="icon" />
-            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
-              Profile
-            </span>
-          </Link>
 
-          <button onClick={() => setShowNotifications(!showNotifications)} className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
-            <Bell className="icon" />
-            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
-              Notifications
-            </span>
-            {notifications.some(n => !n.is_read) && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-            )}
-          </button>
-
-          <Link to="/muj-menus" className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
+          <Link
+            to="/muj-menus"
+            className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}
+          >
             <Utensils className="icon" />
-            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+            <span
+              className={`text transition-all duration-300 ${
+                !isFeedPage
+                  ? 'opacity-0 group-hover:opacity-100 absolute left-16'
+                  : 'opacity-100'
+              }`}
+            >
               MUJ Menus
             </span>
           </Link>
 
-          <button onClick={() => toggleDark()} className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}>
-            {isDark ? <Sun className="icon" /> : <Moon className="icon" />}
-            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
-              {isDark ? 'Light Mode' : 'Dark Mode'}
+          <Link
+            to="/car-rental"
+            className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}
+          >
+            <Car className="icon" />
+            <span
+              className={`text transition-all duration-300 ${
+                !isFeedPage
+                  ? 'opacity-0 group-hover:opacity-100 absolute left-16'
+                  : 'opacity-100'
+              }`}
+            >
+              Car Rental
             </span>
-          </button>
+          </Link>
 
-          {isAdmin && (
-            <Link to="/admin" className={`sidebar-item group text-red-500 ${!isFeedPage && 'justify-center'}`}>
+          {currentUser?.is_superadmin && (
+            <Link
+              to="/admin"
+              className={`sidebar-item group text-red-500 ${
+                !isFeedPage && 'justify-center'
+              }`}
+            >
               <Shield className="icon" />
-              <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
+              <span
+                className={`text transition-all duration-300 ${
+                  !isFeedPage
+                    ? 'opacity-0 group-hover:opacity-100 absolute left-16'
+                    : 'opacity-100'
+                }`}
+              >
                 Admin
               </span>
             </Link>
           )}
+        </div>
 
-          <button onClick={handleLogout} className={`sidebar-item group text-red-500 ${!isFeedPage && 'justify-center'}`}>
-            <LogOut className="icon" />
-            <span className={`text transition-all duration-300 ${!isFeedPage ? 'opacity-0 group-hover:opacity-100 absolute left-16' : 'opacity-100'}`}>
-              Logout
-            </span>
-          </button>
+        {/* User Profile Section */}
+        <div ref={userMenuRef} className="relative px-2">
+          <motion.button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className={`w-full p-3 flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-amoled-light transition-all duration-200 rounded-lg ${
+              !isFeedPage ? 'justify-center' : ''
+            }`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <img
+              src={
+                currentUser?.avatar_url ||
+                `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${currentUser?.id}`
+              }
+              alt=""
+              className="w-10 h-10 rounded-full"
+            />
+            {isFeedPage && (
+              <div className="flex-1 text-left">
+                <div className="font-medium dark:text-white">
+                  {currentUser?.full_name}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  @{currentUser?.username}
+                </div>
+              </div>
+            )}
+          </motion.button>
+
+          <AnimatePresence>
+            {showUserMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="absolute bottom-full left-0 w-full mb-2 bg-white dark:bg-amoled-light rounded-lg shadow-lg border dark:border-gray-800 overflow-hidden"
+              >
+                <Link
+                  to={`/profile/${currentUser?.id}`}
+                  className="flex items-center space-x-2 p-3 hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <User className="w-5 h-5" />
+                  <span>View Profile</span>
+                </Link>
+                <motion.button
+                  onClick={() => {
+                    handleLogout();
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full flex items-center space-x-2 p-3 text-red-500 hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors"
+                  whileHover={{ x: 2 }}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Logout</span>
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {showMobileMenu && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'tween' }}
-            className="fixed inset-y-0 right-0 w-64 bg-white dark:bg-amoled shadow-lg z-50 md:hidden"
-          >
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-lg font-semibold dark:text-white">Menu</h2>
-                <button
-                  onClick={() => setShowMobileMenu(false)}
-                  className="p-2 text-gray-600 dark:text-gray-300"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <Link
-                  to="/feed"
-                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Home className="w-6 h-6" />
-                  <span>Home</span>
-                </Link>
-
-                <Link
-                  to="/profile/me"
-                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <User className="w-6 h-6" />
-                  <span>Profile</span>
-                </Link>
-
-                <button
-                  onClick={() => {
-                    setShowNotifications(!showNotifications);
-                    setShowMobileMenu(false);
-                  }}
-                  className="flex items-center space-x-2 w-full p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                >
-                  <Bell className="w-6 h-6" />
-                  <span>Notifications</span>
-                  {notifications.some(n => !n.is_read) && (
-                    <span className="ml-auto w-2 h-2 bg-red-500 rounded-full" />
-                  )}
-                </button>
-
-                <Link
-                  to="/muj-menus"
-                  className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Utensils className="w-6 h-6" />
-                  <span>MUJ Menus</span>
-                </Link>
-
-                <button
-                  onClick={() => {
-                    toggleDark();
-                    setShowMobileMenu(false);
-                  }}
-                  className="flex items-center space-x-2 w-full p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                >
-                  {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-                  <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
-                </button>
-
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    className="flex items-center space-x-2 p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    <Shield className="w-6 h-6" />
-                    <span>Admin</span>
-                  </Link>
-                )}
-
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-2 w-full p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-amoled-light rounded-lg"
-                >
-                  <LogOut className="w-6 h-6" />
-                  <span>Logout</span>
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Main Content */}
       <div className="flex">
-        {/* Main Content Area */}
-        <main className={`flex-1 pt-16 pb-8 min-h-screen ${isFeedPage ? 'md:ml-48' : 'md:ml-16'}`}>
+        <main
+          className={`flex-1 pt-16 pb-20 md:pb-8 min-h-screen ${
+            isFeedPage ? 'md:ml-48' : 'md:ml-16'
+          }`}
+        >
           <div className="max-w-7xl mx-auto px-4">
             <motion.div
               initial={{ opacity: 0 }}
@@ -330,97 +314,115 @@ export default function Layout() {
         </main>
       </div>
 
-      {/* AI Chat Button & Panel */}
-      <AnimatePresence>
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="fixed bottom-6 right-6 z-50"
-        >
+      {/* Mobile Bottom Navigation */}
+      <motion.nav
+        className="fixed bottom-0 left-0 right-0 bg-white dark:bg-amoled border-t dark:border-gray-800 md:hidden z-50"
+        initial={{ y: 100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      >
+        <div className="flex justify-around items-center h-16">
+          <Link
+            to="/feed"
+            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
+              location.pathname === '/feed'
+                ? 'text-blue-500'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <Home className="w-6 h-6" />
+            {location.pathname === '/feed' && (
+              <motion.span
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-xs font-medium"
+              >
+                Home
+              </motion.span>
+            )}
+          </Link>
+
+          <Link
+            to="/search"
+            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
+              location.pathname === '/search'
+                ? 'text-blue-500'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <Search className="w-6 h-6" />
+            {location.pathname === '/search' && (
+              <motion.span
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-xs font-medium"
+              >
+                Search
+              </motion.span>
+            )}
+          </Link>
+
+          <Link
+            to="/muj-menus"
+            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
+              location.pathname === '/muj-menus'
+                ? 'text-blue-500'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <Utensils className="w-6 h-6" />
+            {location.pathname === '/muj-menus' && (
+              <motion.span
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-xs font-medium"
+              >
+                Menus
+              </motion.span>
+            )}
+          </Link>
+
           <button
-            onClick={() => setShowAIChat(!showAIChat)}
-            className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-600 transition-colors"
+            onClick={() => setIsOpen(!isOpen)}
+            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
+              isOpen ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'
+            }`}
           >
             <MessageCircle className="w-6 h-6" />
-          </button>
-        </motion.div>
-
-        {showAIChat && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-20 right-6 w-80 bg-white dark:bg-amoled rounded-lg shadow-xl z-50"
-          >
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold dark:text-white">AI Assistant</h3>
-                <button
-                  onClick={() => setShowAIChat(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="h-[300px] overflow-y-auto mb-4 space-y-4">
-                {messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        msg.type === 'user'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 dark:bg-amoled-light dark:text-white'
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
-                  </div>
-                ))}
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 dark:bg-amoled-light p-3 rounded-lg dark:text-white">
-                      <div className="flex space-x-2">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
-                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100" />
-                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  sendMessage();
-                }}
-                className="flex space-x-2"
+            {isOpen && (
+              <motion.span
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-xs font-medium"
               >
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-3 py-2 border dark:border-gray-600 dark:bg-amoled-light dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="submit"
-                  disabled={!message.trim() || isTyping}
-                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                Chat
+              </motion.span>
+            )}
+          </button>
+
+          <Link
+            to={`/profile/${currentUser?.id}`}
+            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
+              location.pathname.startsWith('/profile')
+                ? 'text-blue-500'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <User className="w-6 h-6" />
+            {location.pathname.startsWith('/profile') && (
+              <motion.span
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-xs font-medium"
+              >
+                Profile
+              </motion.span>
+            )}
+          </Link>
+        </div>
+      </motion.nav>
+
+      <ChatBot isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {/* Notifications Dropdown */}
       <AnimatePresence>
@@ -429,23 +431,27 @@ export default function Layout() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-16 left-16 w-80 bg-white dark:bg-amoled rounded-lg shadow-xl z-50"
+            className="fixed top-16 left-0 right-0 md:left-16 md:w-80 bg-white dark:bg-amoled rounded-lg shadow-xl z-50 mx-2 md:mx-0"
           >
             <div className="p-4">
-              <h3 className="text-lg font-semibold mb-4 dark:text-white">Notifications</h3>
+              <h3 className="text-lg font-semibold mb-4 dark:text-white">
+                Notifications
+              </h3>
               <div className="space-y-4">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
                     className={`p-3 rounded-lg animate-fade-in ${
-                      notification.is_read 
-                        ? 'bg-gray-50 dark:bg-amoled-light' 
+                      notification.is_read
+                        ? 'bg-gray-50 dark:bg-amoled-light'
                         : 'bg-blue-50 dark:bg-blue-900'
                     }`}
                   >
-                    <p className="text-sm dark:text-white">{notification.content}</p>
+                    <p className="text-sm dark:text-white">
+                      {notification.content}
+                    </p>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {format(new Date(notification.created_at), 'MMM d, h:mm a')}
+                      {new Date(notification.created_at).toLocaleDateString()}
                     </span>
                   </div>
                 ))}

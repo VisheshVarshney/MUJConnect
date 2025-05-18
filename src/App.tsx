@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from 'reac
 import { Toaster } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
+import { logPageVisit } from './lib/ipLogger';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
@@ -18,6 +19,8 @@ import MUJMenus from './pages/MUJMenus';
 import RestaurantMenu from './pages/RestaurantMenu';
 import AdminPanel from './pages/AdminPanel';
 import SharedPostModal from './components/SharedPostModal';
+import CarRental from './pages/CarRental';
+import PostDetails from './pages/PostDetails';
 
 // Session check wrapper component
 const SessionCheck = () => {
@@ -30,6 +33,9 @@ const SessionCheck = () => {
   useEffect(() => {
     checkSession();
     checkSharedPost();
+
+    // Log page visit
+    logPageVisit(window.location.pathname);
 
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -119,9 +125,11 @@ function App() {
               <Route path="/profile/:id" element={<Profile />} />
               <Route path="/search" element={<Search />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/post/:id" element={<PostDetails />} />
             </Route>
             <Route path="/muj-menus" element={<MUJMenus />} />
             <Route path="/menu/:id" element={<RestaurantMenu />} />
+            <Route path="/car-rental" element={<CarRental />} />
           </Route>
         </Routes>
       </AnimatePresence>

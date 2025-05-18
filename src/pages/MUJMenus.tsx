@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Phone, MapPin, Clock, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { MenuSkeleton } from '../components/skeletons/MenuSkeleton';
 
 interface Restaurant {
   id: string;
@@ -32,14 +33,16 @@ export default function MUJMenus() {
 
       const { data, error: fetchError } = await supabase
         .from('restaurants')
-        .select(`
+        .select(
+          `
           *,
           contact_numbers (phone_number)
-        `)
+        `
+        )
         .order('name');
 
       if (fetchError) throw fetchError;
-      
+
       setRestaurants(data || []);
     } catch (error: any) {
       console.error('Error fetching restaurants:', error);
@@ -50,17 +53,14 @@ export default function MUJMenus() {
     }
   };
 
-  const filteredRestaurants = restaurants.filter(restaurant =>
-    restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    restaurant.location.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRestaurants = restaurants.filter(
+    (restaurant) =>
+      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      restaurant.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-amoled flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <MenuSkeleton />;
   }
 
   return (
@@ -69,14 +69,14 @@ export default function MUJMenus() {
       <div className="relative h-[300px] bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
         <div className="absolute inset-0 bg-black/30" />
         <div className="relative z-10 text-center px-4">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-bold text-white mb-4"
           >
             MUJ Food Court
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -165,7 +165,9 @@ export default function MUJMenus() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Phone className="w-4 h-4" />
-                        <span>{restaurant.contact_numbers[0]?.phone_number}</span>
+                        <span>
+                          {restaurant.contact_numbers[0]?.phone_number}
+                        </span>
                       </div>
                     </div>
                   </div>
