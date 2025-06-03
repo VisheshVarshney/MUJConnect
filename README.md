@@ -14,9 +14,6 @@ MUJ Connect is an anonymous social space built for students, by students. This p
 * Interactive comments
 * Community-driven platform
 * Modern and responsive design
-* Particle animation effects
-* Spring animations for sections
-* Card hover animation
 
 ## Security and Confidentiality
 
