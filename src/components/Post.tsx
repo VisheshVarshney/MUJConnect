@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -10,6 +10,7 @@ import {
   Trash2,
   Edit2,
   User,
+  Flag,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
@@ -26,9 +27,7 @@ interface PostProps {
 
 export default function Post({ post, currentUser, onDelete, onUpdate }: PostProps) {
   const [likes, setLikes] = useState<any[]>(post.likes || []);
-  const [isLiked, setIsLiked] = useState(
-    likes.some((like: any) => like.user_id === currentUser?.id)
-  );
+  const [isLiked, setIsLiked] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -36,6 +35,16 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
   const [isAnonymous, setIsAnonymous] = useState(post.is_anonymous);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+
+  // Initialize like state when component mounts or post changes
+  useEffect(() => {
+    if (currentUser && post.likes) {
+      const userLike = post.likes.find((like: any) => like.user_id === currentUser.id);
+      setIsLiked(!!userLike);
+    }
+  }, [currentUser, post.likes]);
 
   const handleLike = async () => {
     if (!currentUser) {
@@ -119,10 +128,38 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
     toast.success('Link copied to clipboard!');
   };
 
+  const handleReport = async () => {
+    if (!currentUser) {
+      toast.error('Please log in to report posts');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('flagged_content')
+        .insert({
+          content_type: 'post',
+          content_id: post.id,
+          reason: reportReason,
+          reported_by: currentUser.id,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      setShowReportModal(false);
+      setReportReason('');
+      toast.success('Post reported successfully');
+    } catch (error: any) {
+      console.error('Error reporting post:', error);
+      toast.error('Error reporting post');
+    }
+  };
+
   const showUserInfo = !post.is_anonymous || currentUser?.id === post.user_id || currentUser?.is_superadmin;
 
   return (
-    <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300">
+    <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300 group">
       <div className="flex justify-between items-start">
         <div className="flex items-center space-x-3">
           {showUserInfo ? (
@@ -168,26 +205,42 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
           </div>
         </div>
 
-        {(currentUser?.id === post.user_id || currentUser?.is_superadmin) && (
-          <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowEditForm(true)}
-              className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
-            >
-              <Edit2 className="w-5 h-5" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-            >
-              <Trash2 className="w-5 h-5" />
-            </motion.button>
-          </div>
-        )}
+        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {currentUser && (
+            <>
+              {currentUser.is_superadmin && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowReportModal(true)}
+                  className="text-gray-500 hover:text-yellow-500 dark:text-gray-400 dark:hover:text-yellow-400"
+                >
+                  <Flag className="w-5 h-5" />
+                </motion.button>
+              )}
+              {(currentUser.id === post.user_id || currentUser.is_superadmin) && (
+                <>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowEditForm(true)}
+                    className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </motion.button>
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {showEditForm ? (
@@ -214,14 +267,19 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleEdit}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              disabled={!editContent.trim()}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Save Changes
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setShowEditForm(false)}
+              onClick={() => {
+                setShowEditForm(false);
+                setEditContent(post.content);
+                setIsAnonymous(post.is_anonymous);
+              }}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
             >
               Cancel
@@ -343,6 +401,55 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
           currentUser={currentUser}
           onClose={() => setShowComments(false)}
         />
+      )}
+
+      {showReportModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white dark:bg-amoled rounded-lg p-6 max-w-sm mx-4"
+          >
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">
+              Report Post
+            </h3>
+            <textarea
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Please provide a reason for reporting this post..."
+              className="w-full p-4 rounded-lg bg-gray-50 dark:bg-amoled-light border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:text-white mb-4"
+              rows={4}
+            />
+            <div className="flex space-x-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleReport}
+                disabled={!reportReason.trim()}
+                className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Report
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportReason('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );

@@ -21,6 +21,7 @@ export default function FeedContent({
   onPostDelete,
   onPostUpdate
 }: FeedContentProps) {
+  console.log('FeedContent currentUser:', currentUser); // Debug log
   return (
     <div className="col-span-12 lg:col-span-8">
       {error && (

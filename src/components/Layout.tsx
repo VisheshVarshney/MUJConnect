@@ -26,19 +26,27 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import ChatBot from './ChatBot';
 import SearchBar from './SearchBar';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { fetchNotifications, getUnreadNotificationCount, markAllNotificationsAsRead, Notification } from '../lib/notifications';
+import NotificationsDropdown from './NotificationsDropdown';
 
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { isDark, toggleDark } = useThemeStore();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isFeedPage = location.pathname === '/feed';
+  const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchNotifications();
@@ -58,6 +66,48 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      if (user) {
+        try {
+          const [notifs, count] = await Promise.all([
+            fetchNotifications(),
+            getUnreadNotificationCount()
+          ]);
+          setNotifications(notifs);
+          setUnreadCount(count);
+        } catch (error) {
+          console.error('Error fetching notifications:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+    // Set up real-time subscription for notifications
+    const subscription = supabase
+      .channel('notifications')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user?.id}`
+      }, async () => {
+        const [notifs, count] = await Promise.all([
+          fetchNotifications(),
+          getUnreadNotificationCount()
+        ]);
+        setNotifications(notifs);
+        setUnreadCount(count);
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user]);
+
   const fetchCurrentUser = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,30 +124,24 @@ export default function Layout() {
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (data) setNotifications(data);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  };
-
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       navigate('/login');
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error('Error signing out');
+      toast.error('Failed to log out');
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
     }
   };
 
@@ -131,8 +175,12 @@ export default function Layout() {
                 className="p-2 text-gray-600 dark:text-gray-300 relative"
               >
                 <Bell className="w-6 h-6" />
-                {notifications.some((n) => !n.is_read) && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                {unreadCount > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"
+                  />
                 )}
               </button>
             </div>
@@ -156,12 +204,12 @@ export default function Layout() {
 
       {/* Left Sidebar - Hidden on Mobile */}
       <motion.div
-        initial={{ width: isFeedPage ? 192 : 64 }}
-        animate={{ width: isFeedPage ? 192 : 64 }}
+        initial={{ width: isFeedPage ? 220 : 64 }}
+        animate={{ width: isFeedPage ? 220 : 64 }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="fixed left-0 top-16 bottom-0 hidden md:flex flex-col bg-white dark:bg-amoled shadow-lg z-40 overflow-hidden"
       >
-        <div className="flex-1 py-4">
+        <div className="flex-1 py-4 space-y-2">
           <Link
             to="/feed"
             className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}
@@ -229,10 +277,65 @@ export default function Layout() {
               </span>
             </Link>
           )}
+
+          {/* Quick Actions Section */}
+          <div className={`px-3 py-2 ${!isFeedPage && 'hidden'}`}>
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+              Quick Actions
+            </h3>
+            <div className="space-y-1">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light transition-colors"
+                onClick={() => navigate('/search')}
+              >
+                <Search className="w-5 h-5" />
+                <span>Search</span>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full flex items-center space-x-3 p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-amoled-light transition-colors"
+                onClick={() => setShowNotifications(true)}
+              >
+                <Bell className="w-5 h-5" />
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="ml-auto w-2 h-2 bg-red-500 rounded-full"
+                  />
+                )}
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Trending Topics Section */}
+          <div className={`px-3 py-2 ${!isFeedPage && 'hidden'}`}>
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+              Trending Topics
+            </h3>
+            <div className="space-y-1">
+              {['#MUJLife', '#CampusEvents', '#StudentLife'].map((tag) => (
+                <motion.button
+                  key={tag}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full flex items-center space-x-3 p-2 rounded-lg text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  onClick={() => navigate(`/search?q=${tag}`)}
+                >
+                  <Hash className="w-5 h-5" />
+                  <span>{tag}</span>
+                </motion.button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* User Profile Section */}
-        <div ref={userMenuRef} className="relative px-2">
+        <div ref={userMenuRef} className="relative px-2 pb-4">
           <motion.button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className={`w-full p-3 flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-amoled-light transition-all duration-200 rounded-lg ${
@@ -241,14 +344,25 @@ export default function Layout() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <img
-              src={
-                currentUser?.avatar_url ||
-                `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${currentUser?.id}`
-              }
-              alt=""
-              className="w-10 h-10 rounded-full"
-            />
+            <motion.div
+              whileHover={{ scale: 1.1 }}
+              className="relative"
+            >
+              <img
+                src={
+                  currentUser?.avatar_url ||
+                  `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${currentUser?.id}`
+                }
+                alt=""
+                className="w-10 h-10 rounded-full"
+              />
+              <motion.div
+                className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-amoled"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2 }}
+              />
+            </motion.div>
             {isFeedPage && (
               <div className="flex-1 text-left">
                 <div className="font-medium dark:text-white">
@@ -299,10 +413,10 @@ export default function Layout() {
       <div className="flex">
         <main
           className={`flex-1 pt-16 pb-20 md:pb-8 min-h-screen ${
-            isFeedPage ? 'md:ml-48' : 'md:ml-16'
+            isFeedPage ? 'md:ml-56' : 'md:ml-16'
           }`}
         >
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -427,37 +541,11 @@ export default function Layout() {
       {/* Notifications Dropdown */}
       <AnimatePresence>
         {showNotifications && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-16 left-0 right-0 md:left-16 md:w-80 bg-white dark:bg-amoled rounded-lg shadow-xl z-50 mx-2 md:mx-0"
-          >
-            <div className="p-4">
-              <h3 className="text-lg font-semibold mb-4 dark:text-white">
-                Notifications
-              </h3>
-              <div className="space-y-4">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 rounded-lg animate-fade-in ${
-                      notification.is_read
-                        ? 'bg-gray-50 dark:bg-amoled-light'
-                        : 'bg-blue-50 dark:bg-blue-900'
-                    }`}
-                  >
-                    <p className="text-sm dark:text-white">
-                      {notification.content}
-                    </p>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(notification.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
+          <NotificationsDropdown
+            notifications={notifications}
+            onClose={() => setShowNotifications(false)}
+            onMarkAllRead={handleMarkAllRead}
+          />
         )}
       </AnimatePresence>
     </div>
