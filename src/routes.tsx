@@ -33,8 +33,8 @@ export default function AppRoutes() {
           <Route element={<Layout />}>
             <Route path="/feed" element={<><SessionCheck /><Feed /></>} />
             <Route path="/feed-v2" element={<><SessionCheck /><FeedV2 /></>} />
+            <Route path="/profile/:id" element={<Profile />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="/profile/:id" element={<Profile />} />
               <Route path="/search" element={<Search />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/post/:id" element={<PostDetails />} />

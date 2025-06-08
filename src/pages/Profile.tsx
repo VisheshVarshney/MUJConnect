@@ -130,22 +130,24 @@ export default function Profile() {
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      
+      // Get current user's profile for permissions if logged in
+      if (user) {
+        const { data: currentUserProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        setCurrentUser(currentUserProfile);
+      }
+
+      // Handle 'me' route
+      const profileId = id === 'me' ? user?.id : id;
+      if (!profileId) {
         navigate('/login');
         return;
       }
-
-      // Get current user's profile for permissions
-      const { data: currentUserProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      setCurrentUser(currentUserProfile);
-
-      // Handle 'me' route
-      const profileId = id === 'me' ? user.id : id;
 
       const { data: profileData } = await supabase
         .from('profiles')
@@ -174,7 +176,7 @@ export default function Profile() {
           .order('created_at', { ascending: false });
 
         // If not superadmin and viewing someone else's profile, exclude anonymous posts
-        if (!currentUserProfile?.is_superadmin && profileId !== user.id) {
+        if (!currentUser?.is_superadmin && profileId !== user?.id) {
           query = query.eq('is_anonymous', false);
         }
 
@@ -223,6 +225,18 @@ export default function Profile() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -320,8 +334,70 @@ export default function Profile() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+          <div className="h-48 bg-gradient-to-r from-blue-400 to-purple-500"></div>
+          
+          <div className="relative px-6 pb-6">
+            <div className="flex justify-between items-end -mt-16">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              </div>
+              
+              <div className="flex space-x-4">
+                <div className="w-24 h-10 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              
+              <div className="mt-4 flex items-center space-x-4">
+                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+
+              <div className="mt-6 flex space-x-8">
+                <div className="text-center">
+                  <div className="h-6 w-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  <div className="mt-1 h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                </div>
+                <div className="text-center">
+                  <div className="h-6 w-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  <div className="mt-1 h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                </div>
+                <div className="text-center">
+                  <div className="h-6 w-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  <div className="mt-1 h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 space-y-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+              <div className="mt-4 flex space-x-4">
+                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -549,6 +625,82 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* Image Cropper Modal */}
+      <AnimatePresence>
+        {showCropper && image && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-md mx-auto"
+            >
+              <div className="relative w-full aspect-square mb-4">
+                <Cropper
+                  image={image}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onCropComplete={(croppedArea, croppedAreaPixels) => {
+                    setCroppedArea(croppedAreaPixels);
+                  }}
+                  onZoomChange={setZoom}
+                  style={{
+                    containerStyle: {
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: '#333',
+                    },
+                    cropAreaStyle: {
+                      border: '2px solid #fff',
+                    },
+                  }}
+                />
+              </div>
+              <div className="flex flex-col space-y-4">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Zoom</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleSaveCroppedImage}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCropper(false);
+                      setImage(null);
+                      setCrop({ x: 0, y: 0 });
+                      setZoom(1);
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
