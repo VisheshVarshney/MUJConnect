@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 export const getCurrentUser = async () => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) return { user: null, profile: null, isSuperAdmin: false };
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -11,6 +11,7 @@ export const getCurrentUser = async () => {
       .eq('id', user.id)
       .single();
 
+    let finalProfile = profile;
     if (!profile) {
       // Create profile if it doesn't exist
       const { data: newProfile } = await supabase
@@ -22,13 +23,16 @@ export const getCurrentUser = async () => {
         })
         .select()
         .single();
-
-      return newProfile;
+      finalProfile = newProfile;
     }
 
-    return profile;
+    return {
+      user,
+      profile: finalProfile,
+      isSuperAdmin: finalProfile?.is_superadmin || false
+    };
   } catch (error) {
     console.error('Error getting current user:', error);
-    return null;
+    return { user: null, profile: null, isSuperAdmin: false };
   }
 }; 

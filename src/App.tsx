@@ -112,6 +112,35 @@ const SessionCheck = () => {
 };
 
 function App() {
+  useEffect(() => {
+    // Disable right-click
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+
+    // Disable devtools shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F12
+      if (e.key === 'F12') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      // Ctrl+Shift+I or Cmd+Opt+I
+      if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') ||
+          (e.metaKey && e.altKey && e.key.toLowerCase() === 'i')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <ThemeProvider>
