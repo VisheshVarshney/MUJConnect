@@ -39,7 +39,7 @@ export default function FeedHeader({ currentUser, onPostCreated }: FeedHeaderPro
           <CreatePost disabled={true} />
         </div>
       ) : (
-        <CreatePost onPostCreated={onPostCreated} />
+        <CreatePost onPostCreated={onPostCreated} currentUser={currentUser} />
       )}
     </>
   );

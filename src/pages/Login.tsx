@@ -91,8 +91,28 @@ export default function Login() {
           redirectTo: `${window.location.origin}/feed`
         }
       });
-      
       if (error) throw error;
+      // Wait for auth state change, then update avatar_url if needed
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          const user = session.user;
+          const avatarUrl = user.user_metadata?.picture || user.user_metadata?.avatar_url;
+          if (avatarUrl) {
+            // Check if profile exists
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, avatar_url')
+              .eq('id', user.id)
+              .single();
+            if (!profile || !profile.avatar_url) {
+              await supabase.from('profiles').upsert({
+                id: user.id,
+                avatar_url: avatarUrl
+              });
+            }
+          }
+        }
+      });
     } catch (error: any) {
       console.error('Google login error:', error);
       toast.error('Error signing in with Google');

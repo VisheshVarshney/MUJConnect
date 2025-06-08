@@ -165,6 +165,12 @@ export default function Feed() {
     }
   };
 
+  const handleLikeChange = (postId: string, newLikes: any[]) => {
+    setPosts(prevPosts => prevPosts.map(post =>
+      post.id === postId ? { ...post, likes: newLikes } : post
+    ));
+  };
+
   const getMediaUrl = (filePath: string): string => {
     if (!filePath) return '';
     
@@ -191,6 +197,7 @@ export default function Feed() {
             error={error}
             onPostDelete={fetchPosts}
             onPostUpdate={fetchPosts}
+            onLikeChange={handleLikeChange}
           />
         </div>
         

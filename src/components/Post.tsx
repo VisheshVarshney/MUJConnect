@@ -23,9 +23,10 @@ interface PostProps {
   currentUser: any;
   onDelete?: () => void;
   onUpdate?: () => void;
+  onLikeChange?: (postId: string, newLikes: any[]) => void;
 }
 
-export default function Post({ post, currentUser, onDelete, onUpdate }: PostProps) {
+export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChange }: PostProps) {
   const [likes, setLikes] = useState<any[]>(post.likes || []);
   const [isLiked, setIsLiked] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -55,7 +56,7 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
     try {
       setIsLikeAnimating(true);
       const newLikeCount = isLiked ? likes.length - 1 : likes.length + 1;
-
+      let updatedLikes;
       if (isLiked) {
         const { error } = await supabase
           .from('likes')
@@ -64,7 +65,8 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
 
         if (error) throw error;
 
-        setLikes(likes.filter((like: any) => like.user_id !== currentUser.id));
+        updatedLikes = likes.filter((like: any) => like.user_id !== currentUser.id);
+        setLikes(updatedLikes);
       } else {
         const { data, error } = await supabase
           .from('likes')
@@ -73,10 +75,15 @@ export default function Post({ post, currentUser, onDelete, onUpdate }: PostProp
           .single();
 
         if (error) throw error;
-        if (data) setLikes([...likes, data]);
+        if (data) updatedLikes = [...likes, data];
+        else updatedLikes = likes;
+        setLikes(updatedLikes);
       }
 
       setIsLiked(!isLiked);
+      if (onLikeChange) {
+        onLikeChange(post.id, updatedLikes);
+      }
       setTimeout(() => setIsLikeAnimating(false), 300);
     } catch (error: any) {
       console.error('Error updating like:', error);

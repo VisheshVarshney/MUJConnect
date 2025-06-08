@@ -11,6 +11,7 @@ interface FeedContentProps {
   error: string | null;
   onPostDelete: () => void;
   onPostUpdate: () => void;
+  onLikeChange?: (postId: string, newLikes: any[]) => void;
 }
 
 export default function FeedContent({
@@ -19,7 +20,8 @@ export default function FeedContent({
   isLoading,
   error,
   onPostDelete,
-  onPostUpdate
+  onPostUpdate,
+  onLikeChange
 }: FeedContentProps) {
   console.log('FeedContent currentUser:', currentUser); // Debug log
   return (
@@ -48,6 +50,7 @@ export default function FeedContent({
                   currentUser={currentUser}
                   onDelete={onPostDelete}
                   onUpdate={onPostUpdate}
+                  onLikeChange={onLikeChange}
                 />
               </StarBorder>
             </div>
