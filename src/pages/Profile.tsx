@@ -449,8 +449,16 @@ export default function Profile() {
 
   const handlePasswordChange = async () => {
     try {
-      if (!profile?.email) {
-        toast.error('Profile not loaded');
+      // Get current user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error('Auth error:', userError);
+        toast.error('Authentication error');
+        return;
+      }
+      
+      if (!user) {
+        toast.error('Please log in to change your password');
         return;
       }
 
@@ -461,7 +469,7 @@ export default function Profile() {
 
       // First verify the current password
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: profile.email,
+        email: user.email || '',
         password: editForm.currentPassword
       });
 
@@ -486,12 +494,20 @@ export default function Profile() {
 
   const handlePasswordReset = async () => {
     try {
-      if (!profile?.email) {
-        toast.error('Profile not loaded');
+      // Get current user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error('Auth error:', userError);
+        toast.error('Authentication error');
+        return;
+      }
+      
+      if (!user?.email) {
+        toast.error('No email address found');
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
         redirectTo: `${window.location.origin}/reset-password`
       });
 
