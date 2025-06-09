@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { Settings, MapPin, Calendar, Camera, X } from 'lucide-react';
+import { Settings, MapPin, Calendar, Camera, X, Shield, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Post from '../components/Post';
@@ -12,10 +12,26 @@ import Cropper from 'react-easy-crop';
 interface Point { x: number; y: number }
 interface Area { x: number; y: number; width: number; height: number }
 
+interface Profile {
+  id: string;
+  full_name: string;
+  username: string;
+  bio: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  email: string | null;
+  is_superadmin: boolean;
+  address: string | null;
+  is_hostel: boolean;
+  hostel_block: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function Profile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -32,11 +48,12 @@ export default function Profile() {
     full_name: '',
     username: '',
     bio: '',
-    settings: {
-      email_notifications: true,
-      show_activity: true,
-      theme: 'light'
-    }
+    banner_url: '',
+    address: '',
+    is_hostel: false,
+    hostel_block: '',
+    currentPassword: '',
+    newPassword: ''
   });
 
   useEffect(() => {
@@ -99,6 +116,11 @@ export default function Profile() {
         return;
       }
 
+      if (!profile) {
+        toast.error('Profile not loaded');
+        return;
+      }
+
       if (isFollowing) {
         // Unfollow
         const { error } = await supabase
@@ -156,16 +178,33 @@ export default function Profile() {
         .single();
 
       if (profileData) {
-        setProfile(profileData);
-        setEditForm({
+        const typedProfile: Profile = {
+          id: profileData.id,
           full_name: profileData.full_name,
           username: profileData.username,
           bio: profileData.bio || '',
-          settings: profileData.settings || {
-            email_notifications: true,
-            show_activity: true,
-            theme: 'light'
-          }
+          avatar_url: profileData.avatar_url,
+          banner_url: profileData.banner_url,
+          email: profileData.email,
+          is_superadmin: profileData.is_superadmin,
+          address: profileData.address || '',
+          is_hostel: profileData.is_hostel || false,
+          hostel_block: profileData.hostel_block || '',
+          created_at: profileData.created_at,
+          updated_at: profileData.updated_at
+        };
+
+        setProfile(typedProfile);
+        setEditForm({
+          full_name: typedProfile.full_name,
+          username: typedProfile.username,
+          bio: typedProfile.bio || '',
+          banner_url: typedProfile.banner_url || '',
+          address: typedProfile.address || '',
+          is_hostel: typedProfile.is_hostel || false,
+          hostel_block: typedProfile.hostel_block || '',
+          currentPassword: '',
+          newPassword: ''
         });
         
         // Fetch posts
@@ -193,36 +232,65 @@ export default function Profile() {
 
   const handleUpdateProfile = async () => {
     try {
+      if (!profile) {
+        toast.error('Profile not loaded');
+        return;
+      }
+
       // Allow superadmin to update any profile
       if (!currentUser?.is_superadmin && currentUser?.id !== profile.id) {
         throw new Error('Unauthorized');
       }
 
-      const { error } = await supabase
+      // Validate hostel block if is_hostel is true
+      if (editForm.is_hostel && !editForm.hostel_block?.trim()) {
+        toast.error('Please enter your hostel block');
+        return;
+      }
+
+      // Prepare update data
+      const updateData: Partial<Profile> = {
+        full_name: editForm.full_name.trim(),
+        username: editForm.username.trim(),
+        bio: editForm.bio?.trim() || null,
+        banner_url: editForm.banner_url || null,
+        address: editForm.is_hostel ? null : editForm.address?.trim() || null,
+        is_hostel: editForm.is_hostel,
+        hostel_block: editForm.is_hostel ? editForm.hostel_block.trim() : null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: updateError } = await supabase
         .from('profiles')
-        .update({
-          full_name: editForm.full_name,
-          username: editForm.username,
-          bio: editForm.bio,
-          settings: editForm.settings,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', profile.id);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error('Profile update error:', updateError);
+        throw updateError;
+      }
       
-      setProfile({
-        ...profile,
-        ...editForm
+      setProfile((prevProfile: Profile | null) => {
+        if (!prevProfile) return null;
+        return {
+          ...prevProfile,
+          ...updateData
+        };
       });
       setIsEditing(false);
       toast.success('Profile updated successfully');
     } catch (error: any) {
-      toast.error('Error updating profile');
+      console.error('Error updating profile:', error);
+      toast.error(error.message || 'Error updating profile');
     }
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!profile) {
+      toast.error('Profile not loaded');
+      return;
+    }
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -297,38 +365,182 @@ export default function Profile() {
 
   const handleSaveCroppedImage = async () => {
     try {
+      if (!profile) {
+        toast.error('Profile not loaded');
+        return;
+      }
+
       if (!image || !croppedArea) return;
 
       const croppedImage = await getCroppedImg(image, croppedArea);
-      const fileName = `${profile.id}/${Date.now()}.jpg`;
+      const fileName = `${profile.id}/banner_${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from('banners')
         .upload(fileName, croppedImage);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
+        .from('banners')
         .getPublicUrl(fileName);
 
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ 
+          banner_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', profile.id);
 
       if (updateError) throw updateError;
 
-      setProfile({
-        ...profile,
-        avatar_url: publicUrl
+      // Update both profile and editForm state immediately
+      setProfile(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          banner_url: publicUrl
+        };
       });
+
+      setEditForm(prev => ({
+        ...prev,
+        banner_url: publicUrl
+      }));
 
       setShowCropper(false);
       setImage(null);
-      toast.success('Avatar updated successfully');
+      toast.success('Banner updated successfully');
     } catch (error: any) {
-      toast.error('Error uploading avatar');
+      console.error('Banner upload error:', error);
+      toast.error(error.message || 'Error uploading banner');
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!profile) {
+      toast.error('Profile not loaded');
+      return;
+    }
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImage(reader.result as string);
+      setShowCropper(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      if (!profile?.email) {
+        toast.error('Profile not loaded');
+        return;
+      }
+
+      if (!editForm.currentPassword || !editForm.newPassword) {
+        toast.error('Please enter both current and new password');
+        return;
+      }
+
+      // First verify the current password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: editForm.currentPassword
+      });
+
+      if (signInError) {
+        toast.error('Current password is incorrect');
+        return;
+      }
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: editForm.newPassword
+      });
+
+      if (updateError) throw updateError;
+
+      toast.success('Password updated successfully');
+      setEditForm(prev => ({ ...prev, currentPassword: '', newPassword: '' }));
+    } catch (error: any) {
+      toast.error(error.message || 'Error updating password');
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    try {
+      if (!profile?.email) {
+        toast.error('Profile not loaded');
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) throw error;
+
+      toast.success('Password reset email sent');
+    } catch (error: any) {
+      toast.error(error.message || 'Error sending reset email');
+    }
+  };
+
+  const handleEmailChange = async () => {
+    try {
+      // Get current user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error('Auth error:', userError);
+        toast.error('Authentication error');
+        return;
+      }
+      
+      if (!user) {
+        toast.error('Please log in to change your email');
+        return;
+      }
+
+      if (!user.email) {
+        console.error('No email found for user:', user);
+        toast.error('Email not found');
+        return;
+      }
+
+      // Send verification email to current email
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: user.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/email-change`
+        }
+      });
+
+      if (otpError) {
+        console.error('OTP error:', otpError);
+        throw otpError;
+      }
+
+      toast.success('Verification email sent to your current email address');
+    } catch (error: any) {
+      console.error('Email change error:', error);
+      toast.error(error.message || 'Error sending verification email');
     }
   };
 
@@ -419,19 +631,44 @@ export default function Profile() {
       className="max-w-4xl mx-auto px-4 py-8"
     >
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-        <div className="h-48 bg-gradient-to-r from-blue-400 to-purple-500"></div>
-        
-        <div className="relative px-6 pb-6">
-          <div className="flex justify-between items-end -mt-16">
-            <div className="relative">
-              <img
-                src={profile.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
-                alt={profile.username}
-                className="w-32 h-32 rounded-full border-4 border-white bg-white dark:border-gray-800"
+        <div className="relative h-32 sm:h-48 bg-gradient-to-r from-blue-400 to-purple-500">
+          {profile?.banner_url && (
+            <img
+              src={profile.banner_url}
+              alt="Profile banner"
+              className="w-full h-full object-cover"
+            />
+          )}
+          {profile && (currentUser?.id === profile.id || currentUser?.is_superadmin) && (
+            <label className="absolute bottom-4 right-4 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors z-10">
+              <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleBannerUpload}
+                className="hidden"
+                onClick={(e) => {
+                  // Reset the input value to allow uploading the same file again
+                  e.currentTarget.value = '';
+                }}
               />
-              {(currentUser?.id === profile.id || currentUser?.is_superadmin) && (
-                <label className="absolute bottom-0 right-0 p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg cursor-pointer">
-                  <Camera className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </label>
+          )}
+        </div>
+        
+        <div className="relative px-4 sm:px-6 pb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end -mt-12 sm:-mt-16">
+            <div className="relative mx-auto sm:mx-0">
+              <motion.img
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                src={profile?.avatar_url || `https://api.dicebear.com/9.x/adventurer-neutral/svg?backgroundColor=b6e3f4,c0aede,d1d4f9`}
+                alt={profile?.username}
+                className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-white dark:border-gray-800"
+              />
+              {(currentUser?.id === profile?.id || currentUser?.is_superadmin) && (
+                <label className="absolute bottom-0 right-0 p-1.5 sm:p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                  <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
                   <input
                     type="file"
                     accept="image/*"
@@ -442,16 +679,18 @@ export default function Profile() {
               )}
             </div>
             
-            <div className="flex space-x-4">
-              {(currentUser?.id === profile.id || currentUser?.is_superadmin) && (
-                <button
+            <div className="flex justify-center sm:justify-end space-x-4 mt-4 sm:mt-0">
+              {(currentUser?.id === profile?.id || currentUser?.is_superadmin) && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setIsEditing(true)}
-                  className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                  className="px-4 sm:px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors text-sm sm:text-base"
                 >
                   Edit Profile
-                </button>
+                </motion.button>
               )}
-              {currentUser?.id !== profile.id && (
+              {currentUser?.id !== profile?.id && (
                 <FancyFollowButton
                   isFollowing={isFollowing}
                   onToggleFollow={handleFollow}
@@ -461,12 +700,64 @@ export default function Profile() {
             </div>
           </div>
 
+          <div className="mt-4 text-center sm:text-left">
+            <div className="flex items-center justify-center sm:justify-start space-x-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                {profile?.full_name}
+              </h1>
+              {profile?.is_superadmin && (
+                <div className="group relative">
+                  <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs sm:text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    Connect's Admin
+                  </div>
+                </div>
+              )}
+              {profile?.email === "varshneyvisheshin@gmail.com" && profile?.username === "vishesh" && (
+                <div className="group relative">
+                  <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs sm:text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    Your friendly neighbourhood Vishesh
+                  </div>
+                </div>
+              )}
+            </div>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">@{profile?.username}</p>
+            {profile?.bio && (
+              <p className="mt-2 text-sm sm:text-base text-gray-700 dark:text-gray-300">{profile.bio}</p>
+            )}
+            
+            {/* Address/Hostel Info and Joined Date in a flex container */}
+            <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              {/* Address/Hostel Info */}
+              {profile?.is_hostel ? (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>{profile.hostel_block} GHS Hostel, MUJ</span>
+                </div>
+              ) : profile?.address && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>{profile.address}</span>
+                </div>
+              )}
+              
+              {/* Joined Date */}
+              {profile?.created_at && (
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>Joined {format(new Date(profile.created_at), 'MMMM yyyy')}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           <AnimatePresence>
             {isEditing ? (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 className="mt-6 space-y-4"
               >
                 <div>
@@ -475,7 +766,7 @@ export default function Profile() {
                     type="text"
                     value={editForm.full_name}
                     onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg"
                   />
                 </div>
                 
@@ -485,7 +776,7 @@ export default function Profile() {
                     type="text"
                     value={editForm.username}
                     onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg"
                   />
                 </div>
 
@@ -494,116 +785,138 @@ export default function Profile() {
                   <textarea
                     value={editForm.bio}
                     onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                    rows={3}
-                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    rows={4}
+                    className="mt-1 block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg resize-none"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Settings</h3>
-                  
-                  <label className="flex items-center space-x-2">
+                <div>
+                  <label className="flex items-center space-x-2 mb-4">
                     <input
                       type="checkbox"
-                      checked={editForm.settings.email_notifications}
+                      checked={editForm.is_hostel}
                       onChange={(e) => setEditForm({
                         ...editForm,
-                        settings: {
-                          ...editForm.settings,
-                          email_notifications: e.target.checked
-                        }
+                        is_hostel: e.target.checked,
+                        // Clear hostel block if not in hostel
+                        hostel_block: e.target.checked ? editForm.hostel_block : ''
                       })}
-                      className="rounded text-blue-500 focus:ring-blue-500 dark:bg-gray-700"
+                      className="w-4 h-4 sm:w-5 sm:h-5 rounded text-blue-500 focus:ring-blue-500 dark:bg-gray-700"
                     />
-                    <span className="text-gray-700 dark:text-gray-300">Email Notifications</span>
+                    <span className="text-base sm:text-lg text-gray-700 dark:text-gray-300">I live in hostel</span>
                   </label>
 
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={editForm.settings.show_activity}
-                      onChange={(e) => setEditForm({
-                        ...editForm,
-                        settings: {
-                          ...editForm.settings,
-                          show_activity: e.target.checked
-                        }
-                      })}
-                      className="rounded text-blue-500 focus:ring-blue-500 dark:bg-gray-700"
-                    />
-                    <span className="text-gray-700 dark:text-gray-300">Show Activity</span>
-                  </label>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Theme</label>
-                    <select
-                      value={editForm.settings.theme}
-                      onChange={(e) => setEditForm({
-                        ...editForm,
-                        settings: {
-                          ...editForm.settings,
-                          theme: e.target.value
-                        }
-                      })}
-                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    >
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
-                    </select>
-                  </div>
+                  {editForm.is_hostel ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Hostel Block</label>
+                      <input
+                        type="text"
+                        value={editForm.hostel_block}
+                        onChange={(e) => setEditForm({ ...editForm, hostel_block: e.target.value })}
+                        placeholder="e.g., A, B, C, etc."
+                        className="mt-1 block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
+                      <textarea
+                        value={editForm.address}
+                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                        rows={3}
+                        placeholder="Enter your address"
+                        className="mt-1 block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg resize-none"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex space-x-4">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={handleUpdateProfile}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-base sm:text-lg font-medium"
                   >
                     Save Changes
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 text-base sm:text-lg font-medium"
                   >
                     Cancel
-                  </button>
+                  </motion.button>
+                </div>
+
+                {/* Account Credentials Section */}
+                <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Account Credentials</h3>
+                  
+                  {/* Password Change */}
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">Change Password</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
+                          <input
+                            type="password"
+                            value={editForm.currentPassword || ''}
+                            onChange={(e) => setEditForm({ ...editForm, currentPassword: e.target.value })}
+                            className="mt-1 block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+                          <input
+                            type="password"
+                            value={editForm.newPassword || ''}
+                            onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
+                            className="mt-1 block w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg"
+                          />
+                        </div>
+                        <div className="flex space-x-4">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handlePasswordChange}
+                            className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                          >
+                            Update Password
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handlePasswordReset}
+                            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                          >
+                            Forgot Password?
+                          </motion.button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email Change */}
+                    <div>
+                      <h4 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-2">Change Email</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        To change your email, you'll need to verify your current email first.
+                      </p>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleEmailChange}
+                        className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      >
+                        Start Email Change Process
+                      </motion.button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
-            ) : (
-              <div className="mt-4">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{profile.full_name}</h1>
-                <p className="text-gray-600 dark:text-gray-400">@{profile.username}</p>
-                
-                {profile.bio && (
-                  <p className="mt-4 text-gray-700 dark:text-gray-300">{profile.bio}</p>
-                )}
-
-                <div className="mt-4 flex items-center space-x-4 text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    <span>Earth</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-1" />
-                    <span>Joined {format(new Date(profile.created_at), 'MMMM yyyy')}</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex space-x-4">
-                  <div className="text-center">
-                    <div className="font-bold text-gray-900 dark:text-white">{posts.length}</div>
-                    <div className="text-gray-600 dark:text-gray-400">Posts</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-gray-900 dark:text-white">{followers.length}</div>
-                    <div className="text-gray-600 dark:text-gray-400">Followers</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-gray-900 dark:text-white">{following.length}</div>
-                    <div className="text-gray-600 dark:text-gray-400">Following</div>
-                  </div>
-                </div>
-              </div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </div>
@@ -639,30 +952,33 @@ export default function Profile() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-md mx-auto"
+              className="bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-4xl mx-auto"
             >
-              <div className="relative w-full aspect-square mb-4">
-                <Cropper
-                  image={image}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={1}
-                  onCropChange={setCrop}
-                  onCropComplete={(croppedArea, croppedAreaPixels) => {
-                    setCroppedArea(croppedAreaPixels);
-                  }}
-                  onZoomChange={setZoom}
-                  style={{
-                    containerStyle: {
-                      width: '100%',
-                      height: '100%',
-                      backgroundColor: '#333',
-                    },
-                    cropAreaStyle: {
-                      border: '2px solid #fff',
-                    },
-                  }}
-                />
+              <div className="relative w-full" style={{ paddingBottom: '22.22%' }}> {/* 9:2 aspect ratio container */}
+                <div className="absolute inset-0">
+                  <Cropper
+                    image={image}
+                    crop={crop}
+                    zoom={zoom}
+                    aspect={9/2}
+                    onCropChange={(crop: Point) => setCrop(crop)}
+                    onCropComplete={(croppedArea, croppedAreaPixels) => {
+                      setCroppedArea(croppedAreaPixels);
+                    }}
+                    onZoomChange={(zoom: number) => setZoom(zoom)}
+                    objectFit="horizontal-cover"
+                    style={{
+                      containerStyle: {
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: '#333',
+                      },
+                      cropAreaStyle: {
+                        border: '2px solid #fff',
+                      },
+                    }}
+                  />
+                </div>
               </div>
               <div className="flex flex-col space-y-4">
                 <div className="flex items-center space-x-4">
@@ -678,13 +994,17 @@ export default function Profile() {
                   />
                 </div>
                 <div className="flex space-x-4">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={handleSaveCroppedImage}
                     className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                   >
                     Save
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       setShowCropper(false);
                       setImage(null);
@@ -694,7 +1014,7 @@ export default function Profile() {
                     className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                   >
                     Cancel
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
