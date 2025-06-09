@@ -8,6 +8,7 @@ import LandingV2 from './pages/LandingV2';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
+import EmailChange from './pages/EmailChange';
 import Feed from './pages/Feed';
 import FeedV2 from './pages/FeedV2';
 import Profile from './pages/Profile';
@@ -30,6 +31,7 @@ export default function AppRoutes() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/email-change" element={<EmailChange />} />
           <Route element={<Layout />}>
             <Route path="/feed" element={<><SessionCheck /><Feed /></>} />
             <Route path="/feed-v2" element={<><SessionCheck /><FeedV2 /></>} />
