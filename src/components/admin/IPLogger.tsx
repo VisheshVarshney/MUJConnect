@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Map, Search, Calendar, Monitor, Smartphone, Tablet } from 'lucide-react';
+import { Map, Search, Calendar, Monitor, Smartphone, Tablet, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -101,6 +101,14 @@ export default function IPLogger() {
             <option value="anonymous">Anonymous</option>
           </select>
         </div>
+
+        <button
+          onClick={fetchLogs}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span>Refresh</span>
+        </button>
       </div>
 
       <div className="bg-white dark:bg-amoled-light rounded-xl shadow-lg overflow-hidden">

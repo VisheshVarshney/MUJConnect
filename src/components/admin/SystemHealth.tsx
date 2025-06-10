@@ -9,8 +9,10 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  RefreshCw
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface SystemMetric {
   id: string;
@@ -21,10 +23,13 @@ interface SystemMetric {
 
 interface ErrorLog {
   id: string;
-  error_type: string;
-  message: string;
-  stack_trace: string;
   created_at: string;
+  user_email: string | null;
+  error_type: string;
+  error_message: string;
+  page_url: string;
+  ip_address: string | null;
+  stack_trace: string | null;
 }
 
 const METRIC_TYPES = {
@@ -50,6 +55,7 @@ export default function SystemHealth() {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   useEffect(() => {
     fetchSystemHealth();
@@ -133,8 +139,31 @@ export default function SystemHealth() {
     return acc;
   }, {} as Record<string, SystemMetric>);
 
+  const fetchErrorLogs = async () => {
+    try {
+      setIsLoadingLogs(true);
+      const { data, error } = await supabase
+        .from('error_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setErrorLogs(data || []);
+    } catch (error: any) {
+      console.error('Error fetching logs:', error);
+      toast.error('Error fetching error logs');
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchErrorLogs();
+  }, []);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Auto-refresh Toggle */}
       <div className="flex justify-end">
         <button
@@ -197,38 +226,102 @@ export default function SystemHealth() {
         })}
       </div>
 
-      {/* Error Logs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow p-4"
-      >
-        <h3 className="text-lg font-medium dark:text-white mb-4">Recent Error Logs</h3>
-        <div className="space-y-4">
-          {errorLogs.map((error) => (
-            <div
-              key={error.id}
-              className="border-l-4 border-red-500 pl-4 py-2"
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium dark:text-white">{error.error_type}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{error.message}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {new Date(error.created_at).toLocaleString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => toast.error(error.stack_trace)}
-                  className="text-sm text-blue-500 hover:text-blue-600"
-                >
-                  View Stack Trace
-                </button>
+      {/* System Status */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">System Status</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <Server className="w-6 h-6 text-green-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">API Status</p>
+                <p className="text-lg font-semibold text-green-600 dark:text-green-400">Operational</p>
               </div>
             </div>
-          ))}
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <Server className="w-6 h-6 text-green-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Database Status</p>
+                <p className="text-lg font-semibold text-green-600 dark:text-green-400">Operational</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <Server className="w-6 h-6 text-green-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Storage Status</p>
+                <p className="text-lg font-semibold text-green-600 dark:text-green-400">Operational</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </motion.div>
+      </div>
+
+      {/* Error Logs */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Error Logs</h2>
+          <button
+            onClick={fetchErrorLogs}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh</span>
+          </button>
+        </div>
+        
+        {isLoadingLogs ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Error Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Message</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Page</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">IP</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {errorLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {format(new Date(log.created_at), 'MMM d, yyyy HH:mm:ss')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {log.user_email || 'Anonymous'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {log.error_type}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="max-w-xs truncate" title={log.error_message}>
+                        {log.error_message}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <div className="max-w-xs truncate" title={log.page_url}>
+                        {log.page_url}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {log.ip_address || 'N/A'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

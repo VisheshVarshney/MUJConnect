@@ -185,7 +185,7 @@ export default function Profile() {
           bio: profileData.bio || '',
           avatar_url: profileData.avatar_url,
           banner_url: profileData.banner_url,
-          email: profileData.email,
+          email: user?.email || null,
           is_superadmin: profileData.is_superadmin,
           address: profileData.address || '',
           is_hostel: profileData.is_hostel || false,
@@ -488,6 +488,7 @@ export default function Profile() {
       toast.success('Password updated successfully');
       setEditForm(prev => ({ ...prev, currentPassword: '', newPassword: '' }));
     } catch (error: any) {
+      console.error('Password change error:', error);
       toast.error(error.message || 'Error updating password');
     }
   };
@@ -515,6 +516,7 @@ export default function Profile() {
 
       toast.success('Password reset email sent');
     } catch (error: any) {
+      console.error('Password reset error:', error);
       toast.error(error.message || 'Error sending reset email');
     }
   };

@@ -24,6 +24,8 @@ import PostDetails from './pages/PostDetails';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import AppRoutes from './routes';
+import { setupGlobalErrorHandling } from './lib/errorLogger';
+import RouteChangeTracker from './components/RouteChangeTracker';
 
 // Session check wrapper component
 const SessionCheck = () => {
@@ -61,7 +63,6 @@ const SessionCheck = () => {
         .eq('id', session.user.id)
         .single();
       setCurrentUser(profile);
-      navigate('/feed');
     }
   };
 
@@ -93,6 +94,7 @@ const SessionCheck = () => {
 
   return (
     <>
+      <RouteChangeTracker />
       <AnimatePresence>
         {showSharedPost && sharedPost && (
           <SharedPostModal
@@ -107,6 +109,7 @@ const SessionCheck = () => {
           />
         )}
       </AnimatePresence>
+      <AppRoutes />
     </>
   );
 };
@@ -135,6 +138,9 @@ function App() {
     };
     document.addEventListener('keydown', handleKeyDown);
 
+    // Setup global error handling
+    setupGlobalErrorHandling();
+
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
@@ -145,7 +151,8 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <AppRoutes />
+          <Toaster position="top-center" />
+          <SessionCheck />
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

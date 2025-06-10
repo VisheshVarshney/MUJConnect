@@ -5,9 +5,43 @@ export const logPageVisit = async (page: string) => {
     // Get current user if logged in
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Get IP information
-    const response = await fetch('https://ipapi.co/json/');
-    const ipData = await response.json();
+    // Get IP information with multiple fallbacks
+    let ipData = null;
+    try {
+      // Try ipify first
+      const ipifyResponse = await fetch('https://api.ipify.org?format=json');
+      if (ipifyResponse.ok) {
+        const data = await ipifyResponse.json();
+        ipData = { ip: data.ip };
+      } else {
+        // Fallback to ipapi.co
+        const ipapiResponse = await fetch('https://ipapi.co/json/');
+        if (ipapiResponse.ok) {
+          ipData = await ipapiResponse.json();
+        } else {
+          // Final fallback to ipinfo.io
+          const ipinfoResponse = await fetch('https://ipinfo.io/json');
+          if (ipinfoResponse.ok) {
+            const data = await ipinfoResponse.json();
+            ipData = { 
+              ip: data.ip,
+              country_name: data.country,
+              city: data.city,
+              region: data.region
+            };
+          }
+        }
+      }
+    } catch (ipError) {
+      console.error('Error fetching IP:', ipError);
+      // Set default values if IP detection fails
+      ipData = {
+        ip: '127.0.0.1',
+        country_name: 'Unknown',
+        city: 'Unknown',
+        region: 'Unknown'
+      };
+    }
 
     // Get device information
     const userAgent = window.navigator.userAgent;
@@ -18,19 +52,23 @@ export const logPageVisit = async (page: string) => {
     };
 
     // Log the visit
-    await supabase.rpc('log_ip_visit', {
+    const { error: logError } = await supabase.rpc('log_ip_visit', {
       p_ip_address: ipData.ip,
       p_user_id: user?.id || null,
       p_location: {
-        country: ipData.country_name,
-        city: ipData.city,
-        region: ipData.region
+        country: ipData.country_name || 'Unknown',
+        city: ipData.city || 'Unknown',
+        region: ipData.region || 'Unknown'
       },
       p_device_info: deviceInfo,
       p_page_visited: page
     });
+
+    if (logError) {
+      console.error('Error logging visit:', logError);
+    }
   } catch (error) {
-    console.error('Error logging visit:', error);
+    console.error('Error in logPageVisit:', error);
   }
 };
 
