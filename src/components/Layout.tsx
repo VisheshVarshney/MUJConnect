@@ -1,25 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
-  User,
-  Bell,
-  LogOut,
   Search,
-  MessageCircle,
-  Moon,
-  Sun,
-  Shield,
-  Utensils,
+  Bell,
+  User,
   Menu,
   X,
-  Send,
-  Car,
-  ChevronDown,
+  LogOut,
   Settings,
   Hash,
-  TrendingUp as TrendUp
+  TrendingUp as TrendUp,
+  PlusCircle,
+  MessageSquare,
+  Sun,
+  Moon,
+  Utensils,
+  Car,
+  Shield
 } from 'lucide-react';
 import { useThemeStore } from '../lib/store';
 import { toast } from 'react-hot-toast';
@@ -36,112 +35,45 @@ export default function Layout() {
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { isDark, toggleDark } = useThemeStore();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isFeedPage = location.pathname === '/feed';
-  const { theme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    fetchNotifications();
-    fetchCurrentUser();
-
-    // Handle click outside user menu
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowUserMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (user) {
-        try {
-          const [notifs, count] = await Promise.all([
-            fetchNotifications(),
-            getUnreadNotificationCount()
-          ]);
-          setNotifications(notifs);
-          setUnreadCount(count);
-        } catch (error) {
-          console.error('Error fetching notifications:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-    // Set up real-time subscription for notifications
-    const subscription = supabase
-      .channel('notifications')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user?.id}`
-      }, async () => {
-        const [notifs, count] = await Promise.all([
-          fetchNotifications(),
-          getUnreadNotificationCount()
-        ]);
-        setNotifications(notifs);
-        setUnreadCount(count);
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    if (user) {
+      fetchNotifications().then(setNotifications);
+      getUnreadNotificationCount().then(setUnreadCount);
+    }
   }, [user]);
 
-  const fetchCurrentUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        setCurrentUser(profile);
-      }
-    } catch (error) {
-      console.error('Error fetching current user:', error);
-    }
-  };
-
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     try {
       await signOut();
       navigate('/login');
-      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error('Failed to log out');
     }
   };
 
-  const handleMarkAllRead = async () => {
-    try {
+  const handleMarkAllAsRead = async () => {
+    if (user) {
       await markAllNotificationsAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking notifications as read:', error);
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
     }
   };
 
@@ -258,7 +190,7 @@ export default function Layout() {
             </span>
           </Link>
 
-          {currentUser?.is_superadmin && (
+          {user?.is_superadmin && (
             <Link
               to="/admin"
               className={`sidebar-item group text-red-500 ${
@@ -350,8 +282,8 @@ export default function Layout() {
             >
               <img
                 src={
-                  currentUser?.avatar_url ||
-                  `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${currentUser?.id}`
+                  user?.avatar_url ||
+                  `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${user?.id}`
                 }
                 alt=""
                 className="w-10 h-10 rounded-full"
@@ -366,10 +298,10 @@ export default function Layout() {
             {isFeedPage && (
               <div className="flex-1 text-left">
                 <div className="font-medium dark:text-white">
-                  {currentUser?.full_name}
+                  {user?.full_name}
                 </div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  @{currentUser?.username}
+                  @{user?.username}
                 </div>
               </div>
             )}
@@ -385,7 +317,7 @@ export default function Layout() {
                 className="absolute bottom-full left-0 w-full mb-2 bg-white dark:bg-amoled-light rounded-lg shadow-lg border dark:border-gray-800 overflow-hidden"
               >
                 <Link
-                  to={`/profile/${currentUser?.id}`}
+                  to={`/profile/${user?.id}`}
                   className="flex items-center space-x-2 p-3 hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
@@ -394,7 +326,7 @@ export default function Layout() {
                 </Link>
                 <motion.button
                   onClick={() => {
-                    handleLogout();
+                    handleSignOut();
                     setShowUserMenu(false);
                   }}
                   className="w-full flex items-center space-x-2 p-3 text-red-500 hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors"
@@ -414,9 +346,9 @@ export default function Layout() {
         <main
           className={`flex-1 pt-16 pb-20 md:pb-8 min-h-screen ${
             isFeedPage ? 'md:ml-56' : 'md:ml-16'
-          }`}
+          } overflow-hidden`}
         >
-          <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="w-full px-4 md:max-w-7xl md:mx-auto md:px-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -429,112 +361,69 @@ export default function Layout() {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <motion.nav
-        className="fixed bottom-0 left-0 right-0 bg-white dark:bg-amoled border-t dark:border-gray-800 md:hidden z-50"
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      >
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-amoled border-t dark:border-gray-800 z-50">
         <div className="flex justify-around items-center h-16">
-          <Link
+          <NavLink
             to="/feed"
-            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
-              location.pathname === '/feed'
-                ? 'text-blue-500'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center w-full h-full ${
+                isActive
+                  ? 'text-blue-500'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`
+            }
           >
             <Home className="w-6 h-6" />
-            {location.pathname === '/feed' && (
-              <motion.span
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-xs font-medium"
-              >
-                Home
-              </motion.span>
-            )}
-          </Link>
-
-          <Link
+            <span className="text-xs mt-1">Home</span>
+          </NavLink>
+          <NavLink
             to="/search"
-            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
-              location.pathname === '/search'
-                ? 'text-blue-500'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center w-full h-full ${
+                isActive
+                  ? 'text-blue-500'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`
+            }
           >
             <Search className="w-6 h-6" />
-            {location.pathname === '/search' && (
-              <motion.span
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-xs font-medium"
-              >
-                Search
-              </motion.span>
-            )}
-          </Link>
-
-          <Link
+            <span className="text-xs mt-1">Search</span>
+          </NavLink>
+          <NavLink
             to="/muj-menus"
-            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
-              location.pathname === '/muj-menus'
-                ? 'text-blue-500'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center w-full h-full ${
+                isActive
+                  ? 'text-blue-500'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`
+            }
           >
             <Utensils className="w-6 h-6" />
-            {location.pathname === '/muj-menus' && (
-              <motion.span
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-xs font-medium"
-              >
-                Menus
-              </motion.span>
-            )}
-          </Link>
-
+            <span className="text-xs mt-1">Menus</span>
+          </NavLink>
           <button
-            onClick={() => setIsOpen(!isOpen)}
-            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
-              isOpen ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'
-            }`}
+            onClick={() => setIsOpen(true)}
+            className="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400"
           >
-            <MessageCircle className="w-6 h-6" />
-            {isOpen && (
-              <motion.span
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-xs font-medium"
-              >
-                Chat
-              </motion.span>
-            )}
+            <MessageSquare className="w-6 h-6" />
+            <span className="text-xs mt-1">Assistant</span>
           </button>
-
-          <Link
-            to={`/profile/${currentUser?.id}`}
-            className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 ${
-              location.pathname.startsWith('/profile')
-                ? 'text-blue-500'
-                : 'text-gray-500 dark:text-gray-400'
-            }`}
+          <NavLink
+            to={`/profile/${user?.id}`}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center w-full h-full ${
+                isActive
+                  ? 'text-blue-500'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`
+            }
           >
             <User className="w-6 h-6" />
-            {location.pathname.startsWith('/profile') && (
-              <motion.span
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-xs font-medium"
-              >
-                Profile
-              </motion.span>
-            )}
-          </Link>
+            <span className="text-xs mt-1">Profile</span>
+          </NavLink>
         </div>
-      </motion.nav>
+      </div>
 
       <ChatBot isOpen={isOpen} setIsOpen={setIsOpen} />
 
@@ -544,7 +433,7 @@ export default function Layout() {
           <NotificationsDropdown
             notifications={notifications}
             onClose={() => setShowNotifications(false)}
-            onMarkAllRead={handleMarkAllRead}
+            onMarkAllRead={handleMarkAllAsRead}
           />
         )}
       </AnimatePresence>

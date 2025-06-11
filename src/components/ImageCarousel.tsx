@@ -76,7 +76,7 @@ export default function ImageCarousel({
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden rounded-lg ${aspectRatioClass} bg-black`}
+      className={`relative w-full max-w-full overflow-hidden rounded-lg ${aspectRatioClass} bg-black`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

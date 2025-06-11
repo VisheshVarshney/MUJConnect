@@ -120,28 +120,11 @@ function App() {
     };
     document.addEventListener('contextmenu', handleContextMenu);
 
-    // Disable devtools shortcuts
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // F12
-      if (e.key === 'F12') {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      // Ctrl+Shift+I or Cmd+Opt+I
-      if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') ||
-          (e.metaKey && e.altKey && e.key.toLowerCase() === 'i')) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-
     // Setup global error handling
     setupGlobalErrorHandling();
 
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 

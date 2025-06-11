@@ -31,7 +31,7 @@ export default function SocialMediaEmbed({ metadata }: SocialMediaEmbedProps) {
         target="_blank"
         rel="noopener noreferrer"
         onClick={handleClick}
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors hover:opacity-90"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors hover:opacity-90 max-w-[calc(100%-1rem)] overflow-hidden"
         style={{ backgroundColor: `${color}15`, color }}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -39,7 +39,7 @@ export default function SocialMediaEmbed({ metadata }: SocialMediaEmbedProps) {
         whileTap={{ scale: 0.98 }}
       >
         <Icon className="w-4 h-4" />
-        <span>{title}</span>
+        <span className="truncate">{title}</span>
         <ExternalLink className="w-3 h-3" />
       </motion.a>
 

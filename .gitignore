@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+netlify.toml
+.bolt
+
+# Local Netlify folder
+.netlify

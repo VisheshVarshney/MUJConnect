@@ -1,3 +1,6 @@
+/* Mantine core styles */
+@import '@mantine/core/styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -227,9 +230,6 @@ a, button {
   transform: translateY(-20px);
   transition: opacity 300ms ease-in, transform 300ms ease-out;
 }
-
-/* Mantine core styles */
-@import '@mantine/core/styles.css';
 
 /* Feed v2 specific styles */
 .feed-v2-container {

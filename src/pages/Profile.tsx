@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { Settings, MapPin, Calendar, Camera, X, Shield, Star } from 'lucide-react';
+import { Settings, MapPin, Calendar, Camera, X, Shield, Star, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import Post from '../components/Post';

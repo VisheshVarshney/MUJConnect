@@ -168,7 +168,7 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={`fixed ${
-              isMobile ? 'inset-2 bottom-20' : 'bottom-6 right-6 w-96'
+              isMobile ? 'inset-0' : 'bottom-6 right-6 w-96'
             } bg-white dark:bg-amoled rounded-lg shadow-xl z-50 flex flex-col max-h-[calc(100vh-5rem)]`}
           >
             {/* Header */}
@@ -197,61 +197,38 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <AnimatePresence>
-                {showSuggestions && messages.length === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="grid grid-cols-1 gap-3"
-                  >
-                    <p className="text-gray-500 dark:text-gray-400 text-center mb-2">
-                      Try asking about:
-                    </p>
+              {showSuggestions && messages.length === 0 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                    How can I help you today?
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
                     {suggestedQueries.map((query, index) => (
                       <motion.button
-                        key={query.text}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{
-                          opacity: 1,
-                          x: 0,
-                          transition: { delay: index * 0.1 },
-                        }}
-                        whileHover={{
-                          scale: 1.02,
-                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        }}
-                        whileTap={{ scale: 0.98 }}
+                        key={index}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
                         onClick={() => handleSuggestedQuery(query.text)}
-                        className="p-4 bg-gray-50 dark:bg-amoled-light rounded-lg text-left transition-all duration-200 hover:shadow-md group"
+                        className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-amoled-light rounded-lg hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors text-left"
                       >
-                        <div className="flex items-start space-x-3">
-                          <span className="text-2xl group-hover:scale-110 transition-transform duration-200">
-                            {query.icon}
-                          </span>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {query.text}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                              {query.description}
-                            </p>
-                          </div>
+                        <span className="text-xl">{query.icon}</span>
+                        <div>
+                          <div className="font-medium dark:text-white">{query.text}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{query.description}</div>
                         </div>
                       </motion.button>
                     ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </div>
+                </div>
+              )}
 
-              {messages.map((message) => (
+              {messages.map((message, index) => (
                 <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
                     className={`max-w-[80%] p-3 rounded-lg ${
@@ -281,32 +258,26 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
             </div>
 
             {/* Input */}
-            <form
-              onSubmit={handleSubmit}
-              className="p-4 border-t dark:border-gray-800"
-            >
-              <div className="flex space-x-2">
+            <div className="p-4 border-t dark:border-gray-800">
+              <form onSubmit={handleSubmit} className="flex space-x-2">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 border dark:border-gray-600 dark:bg-amoled-light dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isLoading}
+                  placeholder="Type your message..."
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-amoled-light rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
                 />
-                <button
+                <motion.button
                   type="submit"
                   disabled={!input.trim() || isLoading}
                   className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  {isLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-            </form>
+                  <Send className="w-5 h-5" />
+                </motion.button>
+              </form>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

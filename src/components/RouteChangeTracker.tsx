@@ -11,4 +11,4 @@ export default function RouteChangeTracker() {
   }, [location]);
 
   return null; // This component doesn't render anything
-} 
+}                                     

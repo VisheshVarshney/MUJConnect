@@ -6,41 +6,65 @@ export const logPageVisit = async (page: string) => {
     const { data: { user } } = await supabase.auth.getUser();
 
     // Get IP information with multiple fallbacks
-    let ipData = null;
+    let ipData: {
+      ip: string;
+      country_name: string;
+      city: string;
+      region: string;
+    } = {
+      ip: '127.0.0.1',
+      country_name: 'Unknown',
+      city: 'Unknown',
+      region: 'Unknown'
+    };
+
     try {
       // Try ipify first
       const ipifyResponse = await fetch('https://api.ipify.org?format=json');
       if (ipifyResponse.ok) {
         const data = await ipifyResponse.json();
-        ipData = { ip: data.ip };
-      } else {
-        // Fallback to ipapi.co
+        // Get location data from ipapi.co for the IP
+        const locationResponse = await fetch(`https://ipapi.co/${data.ip}/json/`);
+        if (locationResponse.ok) {
+          const locationData = await locationResponse.json();
+          ipData = {
+            ip: data.ip,
+            country_name: locationData.country_name,
+            city: locationData.city,
+            region: locationData.region
+          };
+        }
+      }
+      
+      // If ipify fails or location data is missing, try ipapi.co directly
+      if (ipData.country_name === 'Unknown') {
         const ipapiResponse = await fetch('https://ipapi.co/json/');
         if (ipapiResponse.ok) {
-          ipData = await ipapiResponse.json();
-        } else {
-          // Final fallback to ipinfo.io
-          const ipinfoResponse = await fetch('https://ipinfo.io/json');
-          if (ipinfoResponse.ok) {
-            const data = await ipinfoResponse.json();
-            ipData = { 
-              ip: data.ip,
-              country_name: data.country,
-              city: data.city,
-              region: data.region
-            };
-          }
+          const data = await ipapiResponse.json();
+          ipData = {
+            ip: data.ip,
+            country_name: data.country_name,
+            city: data.city,
+            region: data.region
+          };
+        }
+      }
+
+      // If both fail, try ipinfo.io
+      if (ipData.country_name === 'Unknown') {
+        const ipinfoResponse = await fetch('https://ipinfo.io/json');
+        if (ipinfoResponse.ok) {
+          const data = await ipinfoResponse.json();
+          ipData = { 
+            ip: data.ip,
+            country_name: data.country,
+            city: data.city,
+            region: data.region
+          };
         }
       }
     } catch (ipError) {
       console.error('Error fetching IP:', ipError);
-      // Set default values if IP detection fails
-      ipData = {
-        ip: '127.0.0.1',
-        country_name: 'Unknown',
-        city: 'Unknown',
-        region: 'Unknown'
-      };
     }
 
     // Get device information
@@ -56,9 +80,9 @@ export const logPageVisit = async (page: string) => {
       p_ip_address: ipData.ip,
       p_user_id: user?.id || null,
       p_location: {
-        country: ipData.country_name || 'Unknown',
-        city: ipData.city || 'Unknown',
-        region: ipData.region || 'Unknown'
+        country: ipData.country_name,
+        city: ipData.city,
+        region: ipData.region
       },
       p_device_info: deviceInfo,
       p_page_visited: page
