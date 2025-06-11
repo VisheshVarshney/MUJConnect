@@ -175,20 +175,20 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
             <div className="p-4 border-b dark:border-gray-800 flex justify-between items-center">
               <div className="flex items-center space-x-2">
                 <Bot className="w-6 h-6 text-blue-500" />
-                <h3 className="font-semibold dark:text-white">
+                <h3 className="font-semibold text-gray-900 dark:text-white">
                   MUJ Connect Assistant
                 </h3>
               </div>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={clearChat}
-                  className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 >
                   Clear
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="p-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -196,26 +196,27 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-amoled-light">
               {showSuggestions && messages.length === 0 && (
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">
                     How can I help you today?
                   </p>
                   <div className="grid grid-cols-1 gap-2">
                     {suggestedQueries.map((query, index) => (
                       <motion.button
                         key={index}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
                         onClick={() => handleSuggestedQuery(query.text)}
-                        className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-amoled-light rounded-lg hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors text-left"
+                        className="flex items-center space-x-3 p-3 text-left bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow text-gray-900 dark:text-white"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
                         <span className="text-xl">{query.icon}</span>
                         <div>
-                          <div className="font-medium dark:text-white">{query.text}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{query.description}</div>
+                          <p className="font-medium">{query.text}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {query.description}
+                          </p>
                         </div>
                       </motion.button>
                     ))}
@@ -223,18 +224,20 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
                 </div>
               )}
 
-              {messages.map((message, index) => (
+              {messages.map((message) => (
                 <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
                 >
                   <div
-                    className={`max-w-[80%] p-3 rounded-lg ${
+                    className={`max-w-[80%] rounded-lg p-3 ${
                       message.role === 'user'
                         ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 dark:bg-amoled-light dark:text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
                     }`}
                   >
                     <ReactMarkdown className="prose dark:prose-invert max-w-none">
@@ -243,15 +246,20 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
                   </div>
                 </motion.div>
               ))}
-              {isLoading && (
+
+              {isTyping && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex justify-center"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
                 >
-                  <p className="text-gray-500 dark:text-gray-400 italic">
-                    Thinking
-                  </p>
+                  <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3">
+                    <div className="flex space-x-2">
+                      <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce delay-100" />
+                      <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce delay-200" />
+                    </div>
+                  </div>
                 </motion.div>
               )}
               <div ref={messagesEndRef} />
@@ -265,17 +273,19 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Type your message..."
-                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-amoled-light rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                  className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 />
-                <motion.button
+                <button
                   type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
                 >
-                  <Send className="w-5 h-5" />
-                </motion.button>
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
+                </button>
               </form>
             </div>
           </motion.div>

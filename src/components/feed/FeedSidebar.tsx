@@ -25,7 +25,7 @@ export default function FeedSidebar({
       <div className="sticky top-20 space-y-6 max-h-[calc(100vh-5rem)] overflow-y-auto hide-scrollbar">
         {/* Following Section */}
         <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-semibold mb-4 dark:text-white flex items-center">
+          <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
             <Users className="w-5 h-5 mr-2" />
             Following
           </h2>
@@ -50,10 +50,10 @@ export default function FeedSidebar({
                         className="w-10 h-10 rounded-full"
                       />
                       <div>
-                        <div className="font-medium dark:text-white">
+                        <div className="font-medium text-gray-900 dark:text-white">
                           {follow.profiles.full_name}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
                           @{follow.profiles.username}
                         </div>
                       </div>
@@ -63,7 +63,7 @@ export default function FeedSidebar({
 
                 {following.length < 5 && suggestedUsers.length > 0 && (
                   <>
-                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-6 mb-4">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-6 mb-4">
                       Suggested Users
                     </div>
                     {suggestedUsers.map((user) => (
@@ -84,10 +84,10 @@ export default function FeedSidebar({
                             className="w-10 h-10 rounded-full"
                           />
                           <div>
-                            <div className="font-medium dark:text-white">
+                            <div className="font-medium text-gray-900 dark:text-white">
                               {user.full_name}
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
                               @{user.username}
                             </div>
                           </div>

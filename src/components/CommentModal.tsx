@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
-import { X, Edit2, Trash2, Reply } from 'lucide-react';
+import { X, Edit2, Trash2, Reply, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -407,9 +407,10 @@ export default function CommentModal({
               whileTap={{ scale: 0.95 }}
               onClick={() => handleAddComment()}
               disabled={!currentUser || !newComment.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              Comment
+              <Send className="w-5 h-5 sm:hidden" />
+              <span className="hidden sm:inline">Comment</span>
             </motion.button>
           </div>
         </div>

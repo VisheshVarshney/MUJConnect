@@ -25,7 +25,6 @@ import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import ChatBot from './ChatBot';
 import SearchBar from './SearchBar';
-import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchNotifications, getUnreadNotificationCount, markAllNotificationsAsRead, Notification } from '../lib/notifications';
 import NotificationsDropdown from './NotificationsDropdown';
@@ -43,8 +42,7 @@ export default function Layout() {
   const { isDark, toggleDark } = useThemeStore();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isFeedPage = location.pathname === '/feed';
-  const { toggleTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, profile, isSuperAdmin, signOut } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -190,7 +188,7 @@ export default function Layout() {
             </span>
           </Link>
 
-          {user?.is_superadmin && (
+          {isSuperAdmin && (
             <Link
               to="/admin"
               className={`sidebar-item group text-red-500 ${
@@ -282,7 +280,7 @@ export default function Layout() {
             >
               <img
                 src={
-                  user?.avatar_url ||
+                  profile?.avatar_url ||
                   `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${user?.id}`
                 }
                 alt=""
@@ -297,11 +295,11 @@ export default function Layout() {
             </motion.div>
             {isFeedPage && (
               <div className="flex-1 text-left">
-                <div className="font-medium dark:text-white">
-                  {user?.full_name}
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {profile?.full_name}
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  @{user?.username}
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  @{profile?.username}
                 </div>
               </div>
             )}
@@ -369,7 +367,7 @@ export default function Layout() {
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-500 dark:text-gray-400'
+                  : 'text-gray-700 dark:text-gray-300'
               }`
             }
           >
@@ -382,7 +380,7 @@ export default function Layout() {
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-500 dark:text-gray-400'
+                  : 'text-gray-700 dark:text-gray-300'
               }`
             }
           >
@@ -395,7 +393,7 @@ export default function Layout() {
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-500 dark:text-gray-400'
+                  : 'text-gray-700 dark:text-gray-300'
               }`
             }
           >
@@ -404,7 +402,7 @@ export default function Layout() {
           </NavLink>
           <button
             onClick={() => setIsOpen(true)}
-            className="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400"
+            className="flex flex-col items-center justify-center w-full h-full text-gray-700 dark:text-gray-300"
           >
             <MessageSquare className="w-6 h-6" />
             <span className="text-xs mt-1">Assistant</span>
@@ -415,7 +413,7 @@ export default function Layout() {
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-500 dark:text-gray-400'
+                  : 'text-gray-700 dark:text-gray-300'
               }`
             }
           >

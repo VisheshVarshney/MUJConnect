@@ -20,7 +20,6 @@ import SharedPostModal from './components/SharedPostModal';
 import CarRental from './pages/CarRental';
 import PostDetails from './pages/PostDetails';
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import AppRoutes from './routes';
 import { setupGlobalErrorHandling } from './lib/errorLogger';
 import RouteChangeTracker from './components/RouteChangeTracker';
@@ -130,12 +129,10 @@ function App() {
 
   return (
     <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <Toaster position="top-center" />
-          <SessionCheck />
-        </AuthProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <Toaster position="top-center" />
+        <SessionCheck />
+      </AuthProvider>
     </BrowserRouter>
   );
 }
