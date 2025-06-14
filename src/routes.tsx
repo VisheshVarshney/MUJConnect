@@ -18,6 +18,7 @@ import RestaurantMenu from './pages/RestaurantMenu';
 import CarRental from './pages/CarRental';
 import SessionCheck from './components/SessionCheck';
 import ProtectedRoute from './components/ProtectedRoute';
+import PostFull from './pages/PostFull';
 
 export default function AppRoutes() {
   return (
@@ -32,10 +33,10 @@ export default function AppRoutes() {
           <Route element={<Layout />}>
             <Route path="/feed" element={<SessionCheck><Feed /></SessionCheck>} />
             <Route path="/profile/:id" element={<Profile />} />
+            <Route path="/post/:id" element={<PostFull />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/search" element={<Search />} />
               <Route path="/admin" element={<AdminPanel />} />
-              <Route path="/post/:id" element={<PostDetails />} />
             </Route>
             <Route path="/muj-menus" element={<MUJMenus />} />
             <Route path="/menu/:id" element={<RestaurantMenu />} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
@@ -132,7 +132,6 @@ export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChan
 
   const handleShare = () => {
     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
-    toast.success('Link copied to clipboard!');
   };
 
   const handleReport = async () => {
@@ -166,7 +165,7 @@ export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChan
   const showUserInfo = !post.is_anonymous || currentUser?.id === post.user_id || currentUser?.is_superadmin;
 
   return (
-    <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300 group max-w-full overflow-hidden">
+    <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300 group">
       <div className="flex justify-between items-start">
         <div className="flex items-center space-x-3">
           {showUserInfo ? (
@@ -177,7 +176,7 @@ export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChan
                   `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${post.profiles.id}`
                 }
                 alt={post.profiles.username}
-                className="w-10 h-10 rounded-full object-cover"
+                className="w-10 h-10 rounded-full"
               />
             </Link>
           ) : (
@@ -250,215 +249,214 @@ export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChan
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden">
-        <div className="mt-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-          <TextWithEmbeds text={post.content} />
-        </div>
-
-        {post.media_files && post.media_files.length > 0 && (
-          <div className="mt-4">
-            <ImageCarousel
-              images={post.media_files.map((file: any) => ({
-                url: file.url,
-                type: file.file_type,
-              }))}
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 flex border-t dark:border-gray-700 pt-3">
-        <motion.button
-          onClick={handleLike}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-colors ${
-            isLiked
-              ? 'text-red-500'
-              : 'text-gray-500 dark:text-gray-400 hover:text-red-500'
-          }`}
-        >
-          <motion.div
-            animate={
-              isLikeAnimating
-                ? {
-                    scale: [1, 1.2, 1],
-                    rotate: [0, -10, 10, 0],
-                  }
-                : {}
-            }
-            transition={{ duration: 0.3 }}
-          >
-            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-          </motion.div>
-          <span>{likes.length}</span>
-        </motion.button>
-        <motion.button
-          onClick={() => setShowComments(true)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors"
-        >
-          <MessageCircle className="w-5 h-5" />
-          <span>{post.comments?.length || 0}</span>
-        </motion.button>
-        <motion.button
-          onClick={handleShare}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors"
-        >
-          <Share2 className="w-5 h-5" />
-          <span>Share</span>
-        </motion.button>
-      </div>
-
-      <AnimatePresence>
-        {showComments && (
-          <CommentModal
-            postId={post.id}
-            currentUser={currentUser}
-            onClose={() => setShowComments(false)}
+      {showEditForm ? (
+        <div className="mt-4 space-y-4">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full p-4 rounded-lg bg-gray-50 dark:bg-amoled-light border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:text-white"
+            rows={4}
           />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-amoled rounded-lg p-6 shadow-xl w-full max-w-sm text-center"
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
+              className="rounded text-blue-500 focus:ring-blue-500"
+            />
+            <span className="text-gray-700 dark:text-gray-300">
+              Post anonymously
+            </span>
+          </label>
+          <div className="flex space-x-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleEdit}
+              disabled={!editContent.trim()}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <p className="text-lg font-semibold mb-4 dark:text-white">
-                Are you sure you want to delete this post?
-              </p>
-              <div className="flex justify-center space-x-4">
-                <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showEditForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-amoled rounded-lg p-6 shadow-xl w-full max-w-lg"
+              Save Changes
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setShowEditForm(false);
+                setEditContent(post.content);
+                setIsAnonymous(post.is_anonymous);
+              }}
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
             >
-              <h3 className="text-lg font-semibold mb-4 dark:text-white">
-                Edit Post
-              </h3>
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="w-full p-3 border dark:border-gray-700 rounded-lg mb-4 dark:bg-gray-800 dark:text-white resize-y"
-                rows={5}
-              ></textarea>
-              <div className="flex items-center space-x-2 mb-4">
-                <input
-                  type="checkbox"
-                  id="edit-anonymous"
-                  checked={isAnonymous}
-                  onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="form-checkbox h-4 w-4 text-blue-600 dark:bg-gray-700 dark:border-gray-600 rounded"
-                />
-                <label
-                  htmlFor="edit-anonymous"
-                  className="text-gray-700 dark:text-gray-300"
-                >
-                  Post anonymously
-                </label>
-              </div>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setShowEditForm(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleEdit}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              Cancel
+            </motion.button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+            <TextWithEmbeds text={post.content} />
+          </div>
 
-      <AnimatePresence>
-        {showReportModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-amoled rounded-lg p-6 shadow-xl w-full max-w-sm"
+          {post.media_files && post.media_files.length > 0 && (
+            <div className="mt-4">
+              <ImageCarousel
+                images={post.media_files.map((file: any) => ({
+                  url: file.url,
+                  type: file.file_type,
+                }))}
+              />
+            </div>
+          )}
+
+          <div className="mt-4 flex border-t dark:border-gray-700 pt-3">
+            <motion.button
+              onClick={handleLike}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-colors ${
+                isLiked
+                  ? 'text-red-500'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-red-500'
+              }`}
             >
-              <h3 className="text-lg font-semibold mb-4 dark:text-white">
-                Report Post
-              </h3>
-              <textarea
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                placeholder="Reason for reporting..."
-                className="w-full p-3 border dark:border-gray-700 rounded-lg mb-4 dark:bg-gray-800 dark:text-white resize-y"
-                rows={4}
-              ></textarea>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setShowReportModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleReport}
-                  disabled={!reportReason.trim()}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Report
-                </button>
-              </div>
-            </motion.div>
+              <motion.div
+                animate={
+                  isLikeAnimating
+                    ? {
+                        scale: [1, 1.2, 1],
+                        rotate: [0, -10, 10, 0],
+                      }
+                    : {}
+                }
+                transition={{ duration: 0.3 }}
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+              </motion.div>
+              <span>{likes.length}</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowComments(true)}
+              className="flex-1 flex items-center justify-center space-x-2 py-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 rounded-lg transition-colors"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span>{post.comments?.length || 0}</span>
+            </motion.button>
+
+            <motion.button
+              onClick={handleShare}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex-1 flex items-center justify-center space-x-2 py-2 text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 rounded-lg transition-colors"
+            >
+              <Share2 className="w-5 h-5" />
+              <span>Share</span>
+            </motion.button>
+          </div>
+        </>
+      )}
+
+      {showDeleteConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white dark:bg-amoled rounded-lg p-6 max-w-sm mx-4"
+          >
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">
+              Delete Post?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              This action cannot be undone. Are you sure you want to delete this
+              post?
+            </p>
+            <div className="flex space-x-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleDelete}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+              >
+                Delete
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </motion.button>
+            </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      )}
+
+      {showComments && (
+        <CommentModal
+          postId={post.id}
+          currentUser={currentUser}
+          onClose={() => setShowComments(false)}
+        />
+      )}
+
+      {showReportModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white dark:bg-amoled rounded-lg p-6 max-w-sm mx-4"
+          >
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">
+              Report Post
+            </h3>
+            <textarea
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Please provide a reason for reporting this post..."
+              className="w-full p-4 rounded-lg bg-gray-50 dark:bg-amoled-light border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:text-white mb-4"
+              rows={4}
+            />
+            <div className="flex space-x-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleReport}
+                disabled={!reportReason.trim()}
+                className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Report
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportReason('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

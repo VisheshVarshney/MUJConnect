@@ -19,7 +19,8 @@ import AdminPanel from './pages/AdminPanel';
 import SharedPostModal from './components/SharedPostModal';
 import CarRental from './pages/CarRental';
 import PostDetails from './pages/PostDetails';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import AppRoutes from './routes';
 import { setupGlobalErrorHandling } from './lib/errorLogger';
 import RouteChangeTracker from './components/RouteChangeTracker';
@@ -111,6 +112,49 @@ const SessionCheck = () => {
   );
 };
 
+function BannedCheck({ children }: { children: React.ReactNode }) {
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  if (profile?.is_banned) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-amoled">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">You have been banned</h1>
+          <p className="text-gray-700 dark:text-gray-200 mb-2">
+            You have been banned
+            {profile.ban_expires_at ? (
+              <> for <span className="font-semibold">{new Date(profile.ban_expires_at).toLocaleString()}</span></>
+            ) : (
+              <> forever</>
+            )}
+            {' '}from MUJ Connect
+          </p>
+          {profile.ban_issued_by && (
+            <p className="text-gray-700 dark:text-gray-200 mb-2">
+              by: <span className="font-semibold">{profile.ban_issued_by}</span>
+            </p>
+          )}
+          {profile.ban_reason && (
+            <p className="text-gray-700 dark:text-gray-200 mb-2">
+              for <span className="font-semibold">{profile.ban_reason}</span>
+            </p>
+          )}
+          <button
+            className="mt-6 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            onClick={async () => {
+              await signOut();
+              navigate('/login');
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 function App() {
   useEffect(() => {
     // Disable right-click
@@ -129,10 +173,14 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Toaster position="top-center" />
-        <SessionCheck />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BannedCheck>
+            <Toaster position="top-center" />
+            <SessionCheck />
+          </BannedCheck>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

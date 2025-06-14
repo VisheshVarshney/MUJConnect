@@ -20,7 +20,7 @@ import {
   Car,
   Shield
 } from 'lucide-react';
-import { useThemeStore } from '../lib/store';
+import { useTheme } from '../contexts/ThemeContext';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import ChatBot from './ChatBot';
@@ -39,7 +39,7 @@ export default function Layout() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { isDark, toggleDark } = useThemeStore();
+  const { theme, toggleTheme } = useTheme();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isFeedPage = location.pathname === '/feed';
   const { user, profile, isSuperAdmin, signOut } = useAuth();
@@ -95,10 +95,10 @@ export default function Layout() {
             {/* Mobile Top Right Icons */}
             <div className="flex items-center space-x-3 md:hidden">
               <button
-                onClick={() => toggleDark()}
+                onClick={() => toggleTheme()}
                 className="p-2 text-gray-600 dark:text-gray-300"
               >
-                {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+                {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
               </button>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -118,10 +118,10 @@ export default function Layout() {
             {/* Desktop Right Menu - Hidden on Mobile */}
             <div className="hidden md:flex items-center">
               <button
-                onClick={() => toggleDark()}
+                onClick={() => toggleTheme()}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all duration-200 hover:scale-105"
               >
-                {isDark ? (
+                {theme === 'dark' ? (
                   <Sun className="w-5 h-5" />
                 ) : (
                   <Moon className="w-5 h-5" />
@@ -281,7 +281,7 @@ export default function Layout() {
               <img
                 src={
                   profile?.avatar_url ||
-                  `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${user?.id}`
+                  `https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=${profile?.id}`
                 }
                 alt=""
                 className="w-10 h-10 rounded-full"
@@ -315,7 +315,7 @@ export default function Layout() {
                 className="absolute bottom-full left-0 w-full mb-2 bg-white dark:bg-amoled-light rounded-lg shadow-lg border dark:border-gray-800 overflow-hidden"
               >
                 <Link
-                  to={`/profile/${user?.id}`}
+                  to={`/profile/${profile?.id}`}
                   className="flex items-center space-x-2 p-3 hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors"
                   onClick={() => setShowUserMenu(false)}
                 >
@@ -344,14 +344,15 @@ export default function Layout() {
         <main
           className={`flex-1 pt-16 pb-20 md:pb-8 min-h-screen ${
             isFeedPage ? 'md:ml-56' : 'md:ml-16'
-          } overflow-hidden`}
+          }`}
         >
-          <div className="w-full px-4 md:max-w-7xl md:mx-auto md:px-8">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
+              {console.log('Layout rendering Outlet for path:', location.pathname)}
               <Outlet />
             </motion.div>
           </div>
@@ -367,7 +368,7 @@ export default function Layout() {
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-700 dark:text-gray-300'
+                  : 'text-gray-500 dark:text-gray-400'
               }`
             }
           >
@@ -380,7 +381,7 @@ export default function Layout() {
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-700 dark:text-gray-300'
+                  : 'text-gray-500 dark:text-gray-400'
               }`
             }
           >
@@ -393,7 +394,7 @@ export default function Layout() {
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-700 dark:text-gray-300'
+                  : 'text-gray-500 dark:text-gray-400'
               }`
             }
           >
@@ -402,18 +403,18 @@ export default function Layout() {
           </NavLink>
           <button
             onClick={() => setIsOpen(true)}
-            className="flex flex-col items-center justify-center w-full h-full text-gray-700 dark:text-gray-300"
+            className="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400"
           >
             <MessageSquare className="w-6 h-6" />
             <span className="text-xs mt-1">Assistant</span>
           </button>
           <NavLink
-            to={`/profile/${user?.id}`}
+            to={`/profile/${profile?.id}`}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center w-full h-full ${
                 isActive
                   ? 'text-blue-500'
-                  : 'text-gray-700 dark:text-gray-300'
+                  : 'text-gray-500 dark:text-gray-400'
               }`
             }
           >

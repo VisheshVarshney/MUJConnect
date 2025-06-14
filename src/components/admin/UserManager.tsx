@@ -52,7 +52,8 @@ export default function UserManager() {
 
   const handleBanUsers = async () => {
     try {
-      const { error } = await supabase
+      console.log('Banning users:', selectedUsers, banForm);
+      const { data, error } = await supabase
         .from('profiles')
         .update({
           is_banned: true,
@@ -60,7 +61,7 @@ export default function UserManager() {
           ban_expires_at: banForm.permanent ? null : new Date(Date.now() + parseInt(banForm.duration) * 3600000).toISOString()
         })
         .in('id', selectedUsers);
-
+      console.log('Supabase update result:', data, error);
       if (error) throw error;
 
       toast.success('Users banned successfully');
@@ -220,6 +221,7 @@ export default function UserManager() {
                       <button
                         onClick={() => {
                           setBanForm({ ...banForm, userId: user.id });
+                          setSelectedUsers([user.id]);
                           setShowBanModal(true);
                         }}
                         className="text-red-500 hover:text-red-700 dark:hover:text-red-400"

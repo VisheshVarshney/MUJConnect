@@ -63,7 +63,7 @@ export default function FeedSidebar({
 
                 {following.length < 5 && suggestedUsers.length > 0 && (
                   <>
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-6 mb-4">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-6 mb-4">
                       Suggested Users
                     </div>
                     {suggestedUsers.map((user) => (
@@ -112,7 +112,7 @@ export default function FeedSidebar({
 
         {/* MUJ Menus Section */}
         <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-semibold mb-4 dark:text-white flex items-center">
+          <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
             <Utensils className="w-5 h-5 mr-2" />
             MUJ Menus
           </h2>
@@ -146,7 +146,7 @@ export default function FeedSidebar({
                     className="w-12 h-12 rounded-lg object-cover"
                   />
                   <div className="flex-1">
-                    <div className="font-medium dark:text-white group-hover:text-blue-500 transition-colors">
+                    <div className="font-medium text-gray-900 dark:text-white group-hover:text-blue-500 transition-colors">
                       {restaurant.name}
                     </div>
                   </div>

@@ -15,6 +15,7 @@ export default function PostDetails() {
   const [newComment, setNewComment] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPost();
@@ -55,6 +56,9 @@ export default function PostDetails() {
         .eq('id', id)
         .single();
 
+      // Log the full result for debugging
+      console.log('fetchPost result:', { post, postError, id });
+
       if (postError) throw postError;
 
       if (post) {
@@ -71,10 +75,10 @@ export default function PostDetails() {
         setPost(post);
         setComments(post.comments || []);
       }
-    } catch (error) {
-      console.error('Error fetching post:', error);
+    } catch (error: any) {
+      console.error('Error fetching post:', error, 'Post ID:', id);
+      setFetchError(error?.message || error?.toString() || 'Unknown error');
       toast.error('Error loading post');
-      navigate('/feed');
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +130,13 @@ export default function PostDetails() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Post not found
           </h1>
+          {fetchError && (
+            <div className="text-red-500 mb-2">{fetchError}</div>
+          )}
+          {/* Show postError if present for debugging */}
+          {/* {postError && (
+            <div className="text-red-500 mb-2">{postError.message || postError.toString()}</div>
+          )} */}
           <Link
             to="/feed"
             className="text-blue-500 hover:text-blue-600 flex items-center justify-center"
@@ -136,6 +147,25 @@ export default function PostDetails() {
         </div>
       </div>
     );
+  }
+
+  // Debug log before rendering Post
+  console.log('Rendering Post component with:', post, currentUser);
+
+  let postRenderError: any = null;
+  let postComponent = null;
+  try {
+    postComponent = (
+      <Post
+        post={post}
+        currentUser={currentUser}
+        onDelete={() => navigate('/feed')}
+        onUpdate={fetchPost}
+      />
+    );
+  } catch (err) {
+    postRenderError = err;
+    console.error('Error rendering Post component:', err);
   }
 
   return (
@@ -149,12 +179,14 @@ export default function PostDetails() {
           Back to Feed
         </Link>
 
-        <Post
-          post={post}
-          currentUser={currentUser}
-          onDelete={() => navigate('/feed')}
-          onUpdate={fetchPost}
-        />
+        {/* Show error if Post component fails to render */}
+        {postRenderError ? (
+          <div className="bg-red-100 text-red-700 p-4 rounded mb-4">
+            Error rendering post: {postRenderError.message || postRenderError.toString()}
+          </div>
+        ) : (
+          postComponent
+        )}
 
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-6 dark:text-white">

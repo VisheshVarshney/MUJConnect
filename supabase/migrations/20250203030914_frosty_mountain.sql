@@ -196,3 +196,12 @@ AS $$
          to_char(now(), 'YYYYMMDD') || '-' ||
          to_char(floor(random() * 1000000)::integer, 'FM000000')
 $$;
+
+-- Add ban_expires_at column to profiles table
+ALTER TABLE profiles ADD COLUMN ban_expires_at TIMESTAMP WITH TIME ZONE;
+
+-- Add ban_reason column to profiles table
+ALTER TABLE profiles ADD COLUMN ban_reason TEXT;
+
+-- Add is_banned column to profiles table
+ALTER TABLE profiles ADD COLUMN is_banned BOOLEAN DEFAULT FALSE;
