@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 
+const IPDATA_API_KEY = import.meta.env.VITE_IPDATA_API_KEY;
+
 interface ErrorLog {
   error_message: string;
   error_stack?: string;
@@ -28,28 +30,13 @@ export const logError = async (error: Error | string, additionalInfo?: any) => {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
 
-    // Get IP address with multiple fallbacks
+    // Get IP address
     let ipAddress = '';
     try {
-      // Try ipify first
-      const ipifyResponse = await fetch('https://api.ipify.org?format=json');
-      if (ipifyResponse.ok) {
-        const data = await ipifyResponse.json();
+      const response = await fetch(`https://api.ipdata.co/api/v1?api-key=${IPDATA_API_KEY}`);
+      if (response.ok) {
+        const data = await response.json();
         ipAddress = data.ip;
-      } else {
-        // Fallback to ipapi.co
-        const ipapiResponse = await fetch('https://ipapi.co/json/');
-        if (ipapiResponse.ok) {
-          const data = await ipapiResponse.json();
-          ipAddress = data.ip;
-        } else {
-          // Final fallback to ipinfo.io
-          const ipinfoResponse = await fetch('https://ipinfo.io/json');
-          if (ipinfoResponse.ok) {
-            const data = await ipinfoResponse.json();
-            ipAddress = data.ip;
-          }
-        }
       }
     } catch (ipError) {
       console.error('Error fetching IP:', ipError);

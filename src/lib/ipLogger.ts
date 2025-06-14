@@ -1,11 +1,13 @@
 import { supabase } from './supabase';
 
+const IPDATA_API_KEY = import.meta.env.VITE_IPDATA_API_KEY;
+
 export const logPageVisit = async (page: string) => {
   try {
     // Get current user if logged in
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Get IP information with multiple fallbacks
+    // Get IP information
     let ipData: {
       ip: string;
       country_name: string;
@@ -19,49 +21,15 @@ export const logPageVisit = async (page: string) => {
     };
 
     try {
-      // Try ipify first
-      const ipifyResponse = await fetch('https://api.ipify.org?format=json');
-      if (ipifyResponse.ok) {
-        const data = await ipifyResponse.json();
-        // Get location data from ipapi.co for the IP
-        const locationResponse = await fetch(`https://ipapi.co/${data.ip}/json/`);
-        if (locationResponse.ok) {
-          const locationData = await locationResponse.json();
-          ipData = {
-            ip: data.ip,
-            country_name: locationData.country_name,
-            city: locationData.city,
-            region: locationData.region
-          };
-        }
-      }
-      
-      // If ipify fails or location data is missing, try ipapi.co directly
-      if (ipData.country_name === 'Unknown') {
-        const ipapiResponse = await fetch('https://ipapi.co/json/');
-        if (ipapiResponse.ok) {
-          const data = await ipapiResponse.json();
-          ipData = {
-            ip: data.ip,
-            country_name: data.country_name,
-            city: data.city,
-            region: data.region
-          };
-        }
-      }
-
-      // If both fail, try ipinfo.io
-      if (ipData.country_name === 'Unknown') {
-        const ipinfoResponse = await fetch('https://ipinfo.io/json');
-        if (ipinfoResponse.ok) {
-          const data = await ipinfoResponse.json();
-          ipData = { 
-            ip: data.ip,
-            country_name: data.country,
-            city: data.city,
-            region: data.region
-          };
-        }
+      const response = await fetch(`https://api.ipdata.co/api/v1?api-key=${IPDATA_API_KEY}`);
+      if (response.ok) {
+        const data = await response.json();
+        ipData = {
+          ip: data.ip,
+          country_name: data.country_name,
+          city: data.city,
+          region: data.region
+        };
       }
     } catch (ipError) {
       console.error('Error fetching IP:', ipError);
