@@ -11,6 +11,7 @@ interface Restaurant {
   location: string;
   banner_image: string;
   logo_image: string;
+  situated_in: string;
   contact_numbers: { phone_number: string }[];
   menu_images: { url: string }[];
 }
@@ -21,6 +22,7 @@ interface RestaurantFormState {
   location: string;
   banner_image: string;
   logo_image: string;
+  situated_in: string;
   contact_numbers: { phone_number: string }[];
   menu_images: { url: string }[];
 }
@@ -31,6 +33,7 @@ const defaultFormState: RestaurantFormState = {
   location: '',
   banner_image: '',
   logo_image: '',
+  situated_in: 'Inside Campus',
   contact_numbers: [{ phone_number: '' }],
   menu_images: [{ url: '' }]
 };
@@ -78,7 +81,8 @@ export default function RestaurantManager() {
           opening_hours: restaurantForm.opening_hours,
           location: restaurantForm.location,
           banner_image: restaurantForm.banner_image,
-          logo_image: restaurantForm.logo_image
+          logo_image: restaurantForm.logo_image,
+          situated_in: restaurantForm.situated_in
         })
         .select()
         .single();
@@ -134,7 +138,8 @@ export default function RestaurantManager() {
           opening_hours: restaurantForm.opening_hours,
           location: restaurantForm.location,
           banner_image: restaurantForm.banner_image,
-          logo_image: restaurantForm.logo_image
+          logo_image: restaurantForm.logo_image,
+          situated_in: restaurantForm.situated_in
         })
         .eq('id', editingRestaurant.id);
 
@@ -214,6 +219,7 @@ export default function RestaurantManager() {
       location: restaurant.location,
       banner_image: restaurant.banner_image,
       logo_image: restaurant.logo_image,
+      situated_in: restaurant.situated_in,
       contact_numbers: restaurant.contact_numbers || [{ phone_number: '' }],
       menu_images: restaurant.menu_images || [{ url: '' }]
     });
@@ -385,6 +391,25 @@ export default function RestaurantManager() {
                     onChange={(e) => setRestaurantForm({ ...restaurantForm, logo_image: e.target.value })}
                     className="mt-1 block w-full rounded-md border dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Situated In
+                  </label>
+                  <select
+                    value={restaurantForm.situated_in}
+                    onChange={(e) =>
+                      setRestaurantForm((prev) => ({
+                        ...prev,
+                        situated_in: e.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-amoled border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Inside Campus">Inside Campus</option>
+                    <option value="Outside Campus">Outside Campus</option>
+                  </select>
                 </div>
 
                 <div>

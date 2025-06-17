@@ -9,6 +9,7 @@
       - `location` (text)
       - `banner_image` (text)
       - `logo_image` (text)
+      - `situated_in` (text)
       - `created_at` (timestamptz)
       - `updated_at` (timestamptz)
     
@@ -44,9 +45,13 @@ CREATE TABLE IF NOT EXISTS public.restaurants (
   location TEXT NOT NULL,
   banner_image TEXT DEFAULT 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
   logo_image TEXT DEFAULT 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=200&auto=format&fit=crop&q=60',
+  situated_in TEXT NOT NULL DEFAULT 'Inside Campus',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Update existing restaurants to be marked as Inside Campus
+UPDATE public.restaurants SET situated_in = 'Inside Campus' WHERE situated_in IS NULL;
 
 -- Create contact_numbers table
 CREATE TABLE IF NOT EXISTS public.contact_numbers (

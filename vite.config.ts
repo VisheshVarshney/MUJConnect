@@ -12,8 +12,8 @@ export default defineConfig({
       manifest: {
         name: 'MUJ Connect',
         short_name: 'MUJ Connect',
-        description: 'Manipal University Jaipur Connect - Your campus companion',
-        theme_color: '#000000',
+        description: 'MUJ Connect - Social Media for MUJ Students! Post, Share, and Connect with your peers!',
+        theme_color: '#0000FF',
         icons: [
           {
             src: 'MUJ-CONNECT.png',

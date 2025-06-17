@@ -10,11 +10,13 @@ export interface MenuItem {
 export interface Restaurant {
   name: string;
   menu: MenuItem[];
+  situated_in: string;
 }
 
 export const restaurants: Restaurant[] = [
   {
     name: 'Amul',
+    situated_in: 'Inside Campus',
     menu: [
       ...Object.entries({
         'Ice Creams': [
@@ -1924,4 +1926,76 @@ export const restaurants: Restaurant[] = [
       ),
     ],
   },
+  {
+    name: 'Mini Meals',
+    situated_in: 'Inside Campus',
+    menu: Object.entries({
+      'PARATHA': [
+        { name: 'Aloo Paratha', price: 70, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Aloo Pyaz Paratha', price: 80, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Egg Keema Paratha', price: 90, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Paneer Masala Paratha', price: 100, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Chicken Keema Paratha', price: 130, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Chicken Tikka Paratha', price: 140, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Add Cheese', price: 30, cuisine: 'Indian', category: 'PARATHA', available: true }
+      ],
+      'LIGHT LEMON DRINK': [
+        { name: 'Fresh Lime', price: 35, cuisine: 'Indian', category: 'LIGHT LEMON DRINK', available: true },
+        { name: 'Fresh Lime Soda', price: 40, cuisine: 'Indian', category: 'LIGHT LEMON DRINK', available: true },
+        { name: 'Green Mint Soda/Green Apple Soda', price: 60, cuisine: 'Indian', category: 'LIGHT LEMON DRINK', available: true }
+      ],
+      'RICE': [
+        { name: 'Veg Fried Rice', price: 130, cuisine: 'Indian', category: 'RICE', available: true },
+        { name: 'Paneer Fried Rice', price: 160, cuisine: 'Indian', category: 'RICE', available: true },
+        { name: 'Egg Fried Rice', price: 160, cuisine: 'Indian', category: 'RICE', available: true },
+        { name: 'Chicken Fried Rice', price: 170, cuisine: 'Indian', category: 'RICE', available: true },
+        { name: 'Chicken Singhapuri Rice', price: 170, cuisine: 'Indian', category: 'RICE', available: true },
+        { name: 'Hong Kong Rice', price: 180, cuisine: 'Indian', category: 'RICE', available: true },
+        { name: 'Chicken Chopar Rice', price: 220, cuisine: 'Indian', category: 'RICE', available: true },
+        { name: 'Chicken Tripal Rice', price: 230, cuisine: 'Indian', category: 'RICE', available: true }
+      ]
+    }).flatMap(([category, items]) => items.map(item => ({ ...item, category }))),
+  },
+  {
+    name: 'Momo-Gobler-Krispp',
+    situated_in: 'Inside Campus',
+    menu: Object.entries({
+      'STEAMED MOMOS': [
+        { name: 'Veggie Momos', price: 89, cuisine: 'Chinese', category: 'STEAMED MOMOS', available: true },
+        { name: 'Paneer Momos', price: 99, cuisine: 'Chinese', category: 'STEAMED MOMOS', available: true },
+        { name: 'Corn & Cheese Momos', price: 99, cuisine: 'Chinese', category: 'STEAMED MOMOS', available: true },
+        { name: 'Chicken Momos', price: 99, cuisine: 'Chinese', category: 'STEAMED MOMOS', available: true },
+        { name: 'Chicken & Cheese Momos', price: 109, cuisine: 'Chinese', category: 'STEAMED MOMOS', available: true },
+        { name: 'Spicy Chicken Momos', price: 109, cuisine: 'Chinese', category: 'STEAMED MOMOS', available: true }
+      ],
+      'FRIED MOMOS': [
+        { name: 'Veggie Fried Momos', price: 99, cuisine: 'Chinese', category: 'FRIED MOMOS', available: true },
+        { name: 'Paneer Fried Momos', price: 109, cuisine: 'Chinese', category: 'FRIED MOMOS', available: true },
+        { name: 'Corn & Cheese Fried Momos', price: 109, cuisine: 'Chinese', category: 'FRIED MOMOS', available: true },
+        { name: 'Chicken Fried Momos', price: 109, cuisine: 'Chinese', category: 'FRIED MOMOS', available: true },
+        { name: 'Chicken & Cheese Fried Momos', price: 119, cuisine: 'Chinese', category: 'FRIED MOMOS', available: true },
+        { name: 'Spicy Chicken Fried Momos', price: 119, cuisine: 'Chinese', category: 'FRIED MOMOS', available: true }
+      ]
+    }).flatMap(([category, items]) => items.map(item => ({ ...item, category }))),
+  },
+  {
+    name: 'The Kitchen & Curry',
+    situated_in: 'Inside Campus',
+    menu: Object.entries({
+      'PARATHA': [
+        { name: 'Aloo Paratha', price: 70, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Aloo Pyaz Paratha', price: 80, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Egg Keema Paratha', price: 90, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Paneer Masala Paratha', price: 100, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Chicken Keema Paratha', price: 130, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Chicken Tikka Paratha', price: 140, cuisine: 'Indian', category: 'PARATHA', available: true },
+        { name: 'Add Cheese', price: 30, cuisine: 'Indian', category: 'PARATHA', available: true }
+      ],
+      'LIGHT LEMON DRINK': [
+        { name: 'Fresh Lime', price: 35, cuisine: 'Indian', category: 'LIGHT LEMON DRINK', available: true },
+        { name: 'Fresh Lime Soda', price: 40, cuisine: 'Indian', category: 'LIGHT LEMON DRINK', available: true },
+        { name: 'Green Mint Soda/Green Apple Soda', price: 60, cuisine: 'Indian', category: 'LIGHT LEMON DRINK', available: true }
+      ]
+    }).flatMap(([category, items]) => items.map(item => ({ ...item, category }))),
+  }
 ];

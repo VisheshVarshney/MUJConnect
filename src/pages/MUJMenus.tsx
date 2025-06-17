@@ -13,6 +13,7 @@ interface Restaurant {
   location: string;
   banner_image: string;
   logo_image: string;
+  situated_in: string;
   contact_numbers: { phone_number: string }[];
 }
 
@@ -21,6 +22,7 @@ export default function MUJMenus() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'Inside Campus' | 'Outside Campus'>('Inside Campus');
 
   useEffect(() => {
     fetchRestaurants();
@@ -55,8 +57,9 @@ export default function MUJMenus() {
 
   const filteredRestaurants = restaurants.filter(
     (restaurant) =>
-      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.location.toLowerCase().includes(searchQuery.toLowerCase())
+      (restaurant.situated_in === activeTab) &&
+      (restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      restaurant.location.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   if (isLoading) {
@@ -89,8 +92,30 @@ export default function MUJMenus() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="max-w-md mx-auto"
+            className="max-w-md mx-auto space-y-4"
           >
+            <div className="flex justify-center space-x-4 mb-4">
+              <button
+                onClick={() => setActiveTab('Inside Campus')}
+                className={`px-6 py-2 rounded-full transition-all duration-300 ${
+                  activeTab === 'Inside Campus'
+                    ? 'bg-white text-blue-600 shadow-lg'
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                Inside Campus
+              </button>
+              <button
+                onClick={() => setActiveTab('Outside Campus')}
+                className={`px-6 py-2 rounded-full transition-all duration-300 ${
+                  activeTab === 'Outside Campus'
+                    ? 'bg-white text-blue-600 shadow-lg'
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                Outside Campus
+              </button>
+            </div>
             <input
               type="text"
               value={searchQuery}

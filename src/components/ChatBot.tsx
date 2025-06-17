@@ -3,9 +3,65 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Send, X, Loader2, MessageCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
+import { Components } from 'react-markdown';
 import { academicCalendar } from '../data/academicCalendar';
-import { restaurants } from '../data/restaurants';
+import { supabase } from '../lib/supabase';
 import { generateGeminiResponse } from '../lib/gemini';
+import { Link } from 'react-router-dom';
+
+interface RestaurantData {
+  id: string;
+  name: string;
+  situated_in: string;
+}
+
+// Function to convert restaurant names to links
+const convertRestaurantNamesToLinks = (text: string, restaurantData: RestaurantData[]) => {
+  let result = text;
+  restaurantData.forEach((restaurant) => {
+    // Create a case-insensitive regular expression
+    const regex = new RegExp(`\\b${restaurant.name}\\b`, 'gi');
+    result = result.replace(regex, `[${restaurant.name}](menu/${restaurant.id})`);
+  });
+  return result;
+};
+
+// Custom components for ReactMarkdown
+const components: Partial<Components> = {
+  p: ({ children, ...props }) => (
+    <p className="mb-2" {...props}>{children}</p>
+  ),
+  ul: ({ children, ...props }) => (
+    <ul className="list-disc list-inside mb-2 space-y-1" {...props}>{children}</ul>
+  ),
+  li: ({ children, ...props }) => (
+    <li className="ml-4" {...props}>{children}</li>
+  ),
+  a: ({ href, children, ...props }) => {
+    // Check if this is a restaurant link
+    if (href?.startsWith('menu/')) {
+      return (
+        <Link
+          to={`/${href}`}
+          className="text-inherit hover:text-blue-500 hover:underline cursor-pointer"
+        >
+          {children}
+        </Link>
+      );
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-500 hover:underline"
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  },
+};
 
 interface Message {
   id: string;
@@ -49,10 +105,28 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
   });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [restaurantData, setRestaurantData] = useState<RestaurantData[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showSuggestions, setShowSuggestions] = useState(true);
+
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, name, situated_in');
+      
+      if (error) {
+        console.error('Error fetching restaurants:', error);
+        return;
+      }
+      
+      setRestaurantData(data);
+    };
+
+    fetchRestaurants();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -237,8 +311,14 @@ export default function ChatBot({ isOpen, setIsOpen }: ChatBotProps) {
                         : 'bg-gray-100 text-gray-900 dark:bg-amoled-light dark:text-white'
                     }`}
                   >
-                    <ReactMarkdown className="prose dark:prose-invert max-w-none">
-                      {message.content}
+                    <ReactMarkdown 
+                      components={components}
+                      className="prose dark:prose-invert max-w-none"
+                    >
+                      {message.role === 'assistant' 
+                        ? convertRestaurantNamesToLinks(message.content, restaurantData)
+                        : message.content
+                      }
                     </ReactMarkdown>
                   </div>
                 </motion.div>
