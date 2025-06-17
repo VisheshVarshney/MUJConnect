@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { UserPlus, Plus, User } from 'lucide-react';
+import { UserPlus, Plus, User, Chrome } from 'lucide-react';
 import Particles from 'react-tsparticles';
 import { loadFull } from 'tsparticles';
 import type { Engine } from 'tsparticles-engine';
@@ -138,6 +138,46 @@ export default function Register() {
     } catch (error: any) {
       toast.error(error.message);
       setUploading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+          redirectTo: `${window.location.origin}/feed`
+        }
+      });
+      if (error) throw error;
+      // Wait for auth state change, then update avatar_url if needed
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          const user = session.user;
+          const avatarUrl = user.user_metadata?.picture || user.user_metadata?.avatar_url;
+          if (avatarUrl) {
+            // Check if profile exists
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, avatar_url')
+              .eq('id', user.id)
+              .single();
+            if (!profile || !profile.avatar_url) {
+              await supabase.from('profiles').upsert({
+                id: user.id,
+                avatar_url: avatarUrl
+              });
+            }
+          }
+        }
+      });
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      toast.error('Error signing in with Google');
     }
   };
 
@@ -349,6 +389,27 @@ export default function Register() {
           >
             Sign Up
           </motion.button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/20"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-[#0F172A] text-white/60">Or continue with</span>
+            </div>
+          </div>
+
+          <motion.button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full flex items-center justify-center py-2 px-4 border border-white/20 rounded-md shadow-sm text-sm font-medium text-white bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Chrome className="w-5 h-5 mr-2" />
+            Sign in with Google
+          </motion.button>
+
         </form>
 
         <p className="mt-4 text-center text-sm text-white/60">

@@ -18,6 +18,7 @@ import ReactCrop, {
   makeAspectCrop,
 } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { moderateContent } from '../lib/moderation';
 
 interface CreatePostProps {
   disabled?: boolean;
@@ -282,12 +283,23 @@ export default function CreatePost({
     setIsLoading(true);
     setIsUploading(true);
     setUploadProgress(0);
+
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // First, verify content with AI moderation
+      const moderationResult = await moderateContent(content, user.id);
+      
+      if (!moderationResult.isAcceptable) {
+        toast.error(`Content rejected by Connect Assistant: ${moderationResult.reason}`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Create the post
       const { data: post, error: postError } = await supabase
         .from('posts')
         .insert({
@@ -300,6 +312,7 @@ export default function CreatePost({
 
       if (postError) throw postError;
 
+      // Handle media files if present
       if (mediaFiles.length > 0) {
         const totalFiles = mediaFiles.length;
         let uploadedFiles = 0;
@@ -375,7 +388,7 @@ export default function CreatePost({
           />
         </div>
 
-        {isUploading && (
+        {mediaFiles.length > 0 && isUploading && (
           <div className="mb-4">
             <div className="flex items-center space-x-2 mb-2">
               <Upload className="w-4 h-4 text-blue-500" />
@@ -474,11 +487,24 @@ export default function CreatePost({
               isLoading ||
               (!content.trim() && mediaFiles.length === 0)
             }
-            className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center animate-pulse-light"
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Send className="w-5 h-5" />
+            {isLoading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-5 h-5" />
+                <span>Post</span>
+              </>
+            )}
           </motion.button>
         </div>
       </form>

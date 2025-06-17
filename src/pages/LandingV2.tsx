@@ -222,7 +222,7 @@ export default function LandingV2() {
               className="flex justify-center"
             >
               <Link
-                to="/register"
+                to="/login"
                 className="group relative text-lg font-medium text-white/80 hover:text-white transition-colors"
               >
                 <span className="relative z-10">Get Started</span>

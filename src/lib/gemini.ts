@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { academicCalendar } from '../data/academicCalendar';
 import { restaurants } from '../data/restaurants';
 
-const GEMINI_API_KEY = 'AIzaSyCKXLTgCBPFLKmGFrY1TNrR1J4WcA4cBQc';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
