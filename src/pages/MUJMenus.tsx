@@ -69,13 +69,13 @@ export default function MUJMenus() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-amoled">
       {/* Hero Section */}
-      <div className="relative h-[300px] bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+      <div className="relative h-[300px] md:h-[300px] h-[200px] bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
         <div className="absolute inset-0 bg-black/30" />
         <div className="relative z-10 text-center px-4">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-6xl font-bold text-white mb-4"
+            className="text-3xl md:text-6xl font-bold text-white mb-4"
           >
             MUJ Food Court
           </motion.h1>
@@ -83,7 +83,7 @@ export default function MUJMenus() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-xl text-white/90 mb-8"
+            className="text-lg md:text-xl text-white/90 mb-8"
           >
             Discover all your favorite campus eateries in one place
           </motion.p>
@@ -97,7 +97,7 @@ export default function MUJMenus() {
             <div className="flex justify-center space-x-4 mb-4">
               <button
                 onClick={() => setActiveTab('Inside Campus')}
-                className={`px-6 py-2 rounded-full transition-all duration-300 ${
+                className={`px-4 md:px-6 py-2 rounded-full transition-all duration-300 text-sm md:text-base ${
                   activeTab === 'Inside Campus'
                     ? 'bg-white text-blue-600 shadow-lg'
                     : 'bg-white/10 text-white hover:bg-white/20'
@@ -107,7 +107,7 @@ export default function MUJMenus() {
               </button>
               <button
                 onClick={() => setActiveTab('Outside Campus')}
-                className={`px-6 py-2 rounded-full transition-all duration-300 ${
+                className={`px-4 md:px-6 py-2 rounded-full transition-all duration-300 text-sm md:text-base ${
                   activeTab === 'Outside Campus'
                     ? 'bg-white text-blue-600 shadow-lg'
                     : 'bg-white/10 text-white hover:bg-white/20'
@@ -121,7 +121,7 @@ export default function MUJMenus() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search restaurants..."
-              className="w-full px-6 py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50"
+              className="w-full px-4 md:px-6 py-2 md:py-3 rounded-full bg-white/10 border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm md:text-base"
             />
           </motion.div>
         </div>

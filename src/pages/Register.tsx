@@ -134,7 +134,7 @@ export default function Register() {
       });
       if (profileError) throw profileError;
       toast.success('Registration successful!');
-      navigate('/');
+      navigate('/feed');
     } catch (error: any) {
       toast.error(error.message);
       setUploading(false);

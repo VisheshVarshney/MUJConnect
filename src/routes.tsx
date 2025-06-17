@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import LandingV2 from './pages/LandingV2';
 import Login from './pages/Login';
@@ -44,7 +43,6 @@ export default function AppRoutes() {
           </Route>
         </Routes>
       </AnimatePresence>
-      <Toaster position="bottom-right" />
     </>
   );
 } 

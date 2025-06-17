@@ -176,7 +176,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <BannedCheck>
-            <Toaster position="top-center" />
+            <Toaster position="bottom-right" />
             <SessionCheck />
           </BannedCheck>
         </AuthProvider>

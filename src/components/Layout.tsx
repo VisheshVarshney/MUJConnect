@@ -62,8 +62,10 @@ export default function Layout() {
     try {
       await signOut();
       navigate('/login');
+      return null;
     } catch (error) {
       console.error('Error signing out:', error);
+      return null;
     }
   };
 
@@ -101,17 +103,12 @@ export default function Layout() {
                 {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
               </button>
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 text-gray-600 dark:text-gray-300 relative"
+                onClick={() => {
+                  void handleSignOut();
+                }}
+                className="p-2 text-gray-600 dark:text-gray-300"
               >
-                <Bell className="w-6 h-6" />
-                {unreadCount > 0 && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"
-                  />
-                )}
+                <LogOut className="w-6 h-6" />
               </button>
             </div>
 
@@ -324,7 +321,7 @@ export default function Layout() {
                 </Link>
                 <motion.button
                   onClick={() => {
-                    handleSignOut();
+                    void handleSignOut();
                     setShowUserMenu(false);
                   }}
                   className="w-full flex items-center space-x-2 p-3 text-red-500 hover:bg-gray-100 dark:hover:bg-amoled-lighter transition-colors"

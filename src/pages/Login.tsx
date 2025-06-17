@@ -70,6 +70,7 @@ export default function Login() {
         throw signInError;
       }
 
+      // Successful login, navigate directly to feed
       navigate('/feed');
     } catch (error: any) {
       console.error('Login error:', error);
