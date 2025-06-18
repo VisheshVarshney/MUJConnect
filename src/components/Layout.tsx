@@ -18,7 +18,8 @@ import {
   Moon,
   Utensils,
   Car,
-  Shield
+  Shield,
+  Info
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { toast } from 'react-hot-toast';
@@ -28,6 +29,7 @@ import SearchBar from './SearchBar';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchNotifications, getUnreadNotificationCount, markAllNotificationsAsRead, Notification } from '../lib/notifications';
 import NotificationsDropdown from './NotificationsDropdown';
+import ScrollToTop from './ScrollToTop';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -79,6 +81,7 @@ export default function Layout() {
 
   return (
     <div className="relative min-h-screen bg-gray-50 dark:bg-amoled transition-colors duration-300">
+      <ScrollToTop />
       {/* Top Navigation */}
       <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-amoled shadow-sm z-50 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4">
@@ -182,6 +185,22 @@ export default function Layout() {
               }`}
             >
               Car Rental
+            </span>
+          </Link>
+
+          <Link
+            to="/about"
+            className={`sidebar-item group ${!isFeedPage && 'justify-center'}`}
+          >
+            <Info className="icon" />
+            <span
+              className={`text transition-all duration-300 ${
+                !isFeedPage
+                  ? 'opacity-0 group-hover:opacity-100 absolute left-16'
+                  : 'opacity-100'
+              }`}
+            >
+              About Us
             </span>
           </Link>
 
@@ -349,7 +368,6 @@ export default function Layout() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {console.log('Layout rendering Outlet for path:', location.pathname)}
               <Outlet />
             </motion.div>
           </div>

@@ -18,6 +18,7 @@ import CarRental from './pages/CarRental';
 import SessionCheck from './components/SessionCheck';
 import ProtectedRoute from './components/ProtectedRoute';
 import PostFull from './pages/PostFull';
+import AboutUs from './pages/AboutUs';
 
 export default function AppRoutes() {
   return (
@@ -40,6 +41,7 @@ export default function AppRoutes() {
             <Route path="/muj-menus" element={<MUJMenus />} />
             <Route path="/menu/:id" element={<RestaurantMenu />} />
             <Route path="/car-rental" element={<CarRental />} />
+            <Route path="/about" element={<AboutUs />} />
           </Route>
         </Routes>
       </AnimatePresence>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Utensils, ChevronRight } from 'lucide-react';
+import { Users, Utensils, ChevronRight, Info, Car } from 'lucide-react';
 import { FollowingSkeleton } from '../Skeleton';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -107,6 +107,24 @@ export default function FeedSidebar({
                 )}
               </>
             )}
+          </div>
+        </div>
+
+        {/* Quick Links Section */}
+        <div className="bg-white dark:bg-amoled rounded-xl shadow-md p-6">
+          <div className="space-y-4">
+            <Link
+              to="/car-rental"
+              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-amoled-light transition-colors animate-fade-in group"
+            >
+              <Car className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-500" />
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white group-hover:text-blue-500 transition-colors">
+                  Car Rental
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+            </Link>
           </div>
         </div>
 
