@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import Post from '../components/Post';
 import { format } from 'date-fns';
+import { moderateContent } from '../lib/moderation';
 
 export default function PostDetails() {
   const { id } = useParams();
@@ -90,9 +91,13 @@ export default function PostDetails() {
       toast.error('Please log in to comment');
       return;
     }
-
     if (!newComment.trim()) return;
-
+    // Moderate comment before posting
+    const moderation = await moderateContent(newComment.trim(), currentUser.id);
+    if (!moderation.isAcceptable) {
+      toast.error(`Content rejected by Connect Assistant: ${moderation.reason || 'Not allowed'}`);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('comments')

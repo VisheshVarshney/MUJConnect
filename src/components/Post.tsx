@@ -17,6 +17,7 @@ import { toast } from 'react-hot-toast';
 import ImageCarousel from './ImageCarousel';
 import CommentModal from './CommentModal';
 import TextWithEmbeds from './TextWithEmbeds';
+import { moderateContent } from '../lib/moderation';
 
 interface PostProps {
   post: any;
@@ -38,6 +39,7 @@ export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChan
   const [showComments, setShowComments] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Initialize like state when component mounts or post changes
   useEffect(() => {
@@ -110,6 +112,15 @@ export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChan
   };
 
   const handleEdit = async () => {
+    setIsAnalyzing(true);
+    // Moderate post before saving edits
+    const moderation = await moderateContent(editContent, currentUser.id);
+    setIsAnalyzing(false);
+    if (!moderation.isAcceptable) {
+      toast.error(`Content rejected by Connect Assistant: ${moderation.reason || 'Not allowed'}`);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('posts')
@@ -273,10 +284,20 @@ export default function Post({ post, currentUser, onDelete, onUpdate, onLikeChan
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleEdit}
-              disabled={!editContent.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!editContent.trim() || isAnalyzing}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              Save Changes
+              {isAnalyzing ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}

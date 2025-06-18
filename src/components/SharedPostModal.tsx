@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import CustomVideoPlayer from './CustomVideoPlayer';
+import { moderateContent } from '../lib/moderation';
 
 interface SharedPostModalProps {
   post: any;
@@ -57,9 +58,13 @@ export default function SharedPostModal({ post, onClose, currentUser }: SharedPo
       toast.error('Please log in to comment');
       return;
     }
-
     if (!newComment.trim()) return;
-
+    // Moderate comment before posting
+    const moderation = await moderateContent(newComment.trim(), currentUser.id);
+    if (!moderation.isAcceptable) {
+      toast.error(`Content rejected by Connect Assistant: ${moderation.reason || 'Not allowed'}`);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('comments')

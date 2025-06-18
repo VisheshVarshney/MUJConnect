@@ -96,6 +96,13 @@ export default function AboutUs() {
               </ul>
             </div>
           </div>
+          {/* AI Moderation Warning */}
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg mt-4 flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-300 flex-shrink-0" />
+            <span className="text-sm text-yellow-800 dark:text-yellow-200">
+              <strong>Notice:</strong> All content posted on MUJ Connect is automatically moderated using advanced AI systems. Posts and comments may be subject to automated review for safety, compliance with community guidelines, and to ensure a respectful environment for all users.
+            </span>
+          </div>
         </section>
 
         {/* Developers Section */}

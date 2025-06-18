@@ -99,6 +99,13 @@ export default function Layout() {
 
             {/* Mobile Top Right Icons */}
             <div className="flex items-center space-x-3 md:hidden">
+              <Link
+                to="/about"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-amoled-light focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="About Us"
+              >
+                <Info className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+              </Link>
               <button
                 onClick={() => toggleTheme()}
                 className="p-2 text-gray-600 dark:text-gray-300"
