@@ -145,7 +145,11 @@ export default function AboutUs() {
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-amoled mb-4 overflow-hidden">
-                  {/* Add image here */}
+                <img
+                    src="https://res.cloudinary.com/dcvmvxbyf/image/upload/harshit.png"
+                    alt="Vishesh Varshney"
+                    className="w-full h-full object-cover"
+                  />
                   <div className="w-full h-full bg-gradient-to-br from-green-500 to-blue-500"></div>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">Harshit Raj</h3>
