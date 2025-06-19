@@ -25,7 +25,7 @@ export default function AppRoutes() {
     <>
       <AnimatePresence mode="wait">
         <Routes>
-          <Route path="/" element={<SessionCheck><LandingV2 /></SessionCheck>} />
+          <Route path="/" element={<LandingV2 />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />

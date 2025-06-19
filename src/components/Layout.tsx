@@ -87,7 +87,7 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-6">
-              <Link to="/" className="text-2xl font-bold text-blue-500">
+              <Link to="/feed" className="text-2xl font-bold text-blue-500">
                 MUJ Connect
               </Link>
             </div>

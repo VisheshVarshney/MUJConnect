@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform, useSpring, useMotionValue, useVelocity, useAnimationFrame } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Shield, MessageCircle, Users, ChevronRight, ArrowRight, Sparkles, Code, Zap } from 'lucide-react';
 import Particles from 'react-tsparticles';
 import { loadFull } from 'tsparticles';
 import type { Engine } from 'tsparticles-engine';
+import { supabase } from '../lib/supabase';
 
 // Wrap text in spans for letter animation
 const AnimatedText = ({ text, className = "" }: { text: string; className?: string }) => {
@@ -129,6 +130,21 @@ export default function LandingV2() {
     threshold: 0.5,
     triggerOnce: true,
   });
+
+  const [checkedSession, setCheckedSession] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/feed', { replace: true });
+      } else {
+        setCheckedSession(true);
+      }
+    })();
+  }, [navigate]);
+
+  if (!checkedSession) return null;
 
   // Particle initialization
   const particlesInit = async (engine: Engine) => {
